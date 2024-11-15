@@ -1,0 +1,14 @@
+import pyrebase
+
+config = {
+  'apiKey': "<Firebase API Key>",
+  'authDomain': "<Firebase Project Domain>",
+  'databaseURL': "<Firebase Realtime Database URL>",
+  'projectId': "<Firebase Project Name>",
+  'storageBucket': "<Firebase Project Name>.firebasestorage.app",
+  'messagingSenderId': "<Firebase Messaging Sender ID>",
+  'appId': "<Firebase App ID>",
+  'measurementId': "<Firebase Measurement ID>"
+}
+
+firebase = pyrebase.initialize_app(config)
