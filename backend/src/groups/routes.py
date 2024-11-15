@@ -120,3 +120,20 @@ def updateGroup(id):
         return jsonify(message='Group updated successfully', status=201), 201
     except Exception as e:
         return jsonify(message=f'Group update failed {e}', status=400), 400
+    
+@group_bp.route('/group/<id>', methods=['DELETE'])
+@cross_origin(supports_credentials=True)
+def deleteGroup(id):
+    '''This method deletes a specific group by its ID.'''
+    try:
+        db.child("group").child(id).remove()
+        return jsonify(
+            message='Group removed successfully',
+            status=200
+        ), 200
+    except Exception as e:
+        return jsonify(
+            group={},
+            message=f"An error occurred: {e}",
+            status=400
+        ), 400
