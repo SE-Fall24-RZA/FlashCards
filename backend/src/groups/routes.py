@@ -72,3 +72,51 @@ def create():
         return jsonify(message='Create Group Successful', status=201), 201
     except Exception as e:
         return jsonify(message=f'Create Group Failed {e}', status=400), 400
+    
+@group_bp.route('/group/<id>/addMember', methods=['PATCH'])
+@cross_origin(supports_credentials=True)
+def addMemberToGroup(id):
+    '''This adds a given user to the specified group'''
+    try:
+        data = request.get_json()
+        localId = data['localId']
+        member_list = db.child("group").child(id).child("members").get().val()
+        if localId not in member_list:
+            member_list.append(localId)
+            db.child("group").child(id).child("members").set(member_list)
+        return jsonify(message='User added successfully', status=201), 201
+    except Exception as e:
+        return jsonify(message=f'User add failed {e}', status=400), 400
+    
+@group_bp.route('/group/<id>/removeMember', methods=['PATCH'])
+@cross_origin(supports_credentials=True)
+def removeMemberFromGroup(id):
+    '''This removes a given user from the specified group'''
+    try:
+        data = request.get_json()
+        userId = data['userId']
+        member_list = db.child("group").child(id).child("members").get().val()
+        if userId in member_list:
+            member_list.remove(userId)
+            db.child("group").child(id).child("members").set(member_list)
+        else:
+            raise Exception("User is not in this group.")
+        return jsonify(message='User removed successfully', status=201), 201
+    except Exception as e:
+        return jsonify(message=f'User remove failed {e}', status=400), 400
+    
+@group_bp.route('/group/<id>/update', methods=['PATCH'])
+@cross_origin(supports_credentials=True)
+def updateGroup(id):
+    '''This updates non-user information for a specified group'''
+    try:
+        data = request.get_json()
+        group_name = data['group_name']
+        description = data['description']
+        db.child("group").child(id).update({
+            "group_name": group_name,
+            "description": description
+        })
+        return jsonify(message='Group updated successfully', status=201), 201
+    except Exception as e:
+        return jsonify(message=f'Group update failed {e}', status=400), 400
