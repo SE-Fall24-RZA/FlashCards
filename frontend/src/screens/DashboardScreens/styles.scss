@@ -103,6 +103,35 @@
     }
 }
 
+.group-page {
+    .welcome-card {
+        background: #221daf;
+        border: none;
+        box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+        margin-top: 40px;
+        border-radius: 12px;
+        padding: 30px 20px;
+        margin-bottom: 20px;
+        h3 {
+            color: #fff;
+            font-family: 'HW Nuckle Trial';
+            margin-bottom: 4px;
+        }
+        p {
+            font-size: 12px;
+            color: #fff;
+            margin-bottom: 0px;
+        }
+        &.practice-deck {
+            padding-top: 13px;
+            .back-icon {
+                cursor: pointer;
+            }
+        }
+    }
+    min-height: 98vh;
+}
+
 .explore-page {
     .masthead {
         text-align: center;

@@ -7,6 +7,7 @@ import Explore from 'screens/DashboardScreens/Explore'
 import PracticeDeck from 'screens/DashboardScreens/PracticeDeck'
 import EditDeck from 'screens/DashboardScreens/EditDeck'
 import Home from 'screens/Home'
+import GroupDashboard from 'screens/DashboardScreens/GroupDashboard'
 
 const homeRoutes = [
   {
@@ -69,6 +70,10 @@ const dashboardRoutes = [
   {
     path: '/explore',
     element: <Explore />,
+  },
+  {
+    path: '/group/:id',
+    element: <GroupDashboard />,
   }
 ]
 
