@@ -11,6 +11,7 @@ except ImportError:
 
 group_bp = Blueprint('group_bp', __name__)
 db = firebase.database()
+auth = firebase.auth()
 
 @group_bp.route('/group/<id>', methods=['GET'])
 @cross_origin(supports_credentials=True)
@@ -24,6 +25,7 @@ def getGroup(id):
             status=200
         ), 200
     except Exception as e:
+        print(e)
         return jsonify(
             group={},
             message=f"An error occurred: {e}",
@@ -59,13 +61,13 @@ def create():
     '''Create a new group.'''
     try:
         data = request.get_json()
-        localId = data['localId']
         group_name = data['group_name']
         description = data['description']
+        member = {"userId": data['localId'], "email": data['email']}
         
         db.child("group").push({
             "group_name": group_name,
-            "members": [localId],
+            "members": [member],
             "description": description
         })
 
@@ -80,9 +82,10 @@ def addMemberToGroup(id):
     try:
         data = request.get_json()
         localId = data['localId']
+        email = data['email']
         member_list = db.child("group").child(id).child("members").get().val()
-        if localId not in member_list:
-            member_list.append(localId)
+        if {"userId": localId, "email": email} not in member_list:
+            member_list.append({"userId": localId, "email": email})
             db.child("group").child(id).child("members").set(member_list)
         return jsonify(message='User added successfully', status=201), 201
     except Exception as e:
@@ -137,3 +140,39 @@ def deleteGroup(id):
             message=f"An error occurred: {e}",
             status=400
         ), 400
+    
+@group_bp.route('/group/<id>/addDeck', methods=['PATCH'])
+@cross_origin(supports_credentials=True)
+def addDeckToGroup(id):
+    '''This adds a given deck to the specified group'''
+    try:
+        data = request.get_json()
+        group = db.child("group").child(id).get().val()
+        if "decks" in group.keys():
+            deck_list = group["decks"]
+            new_deck = {
+                "id": data["id"],
+                "title": data["title"],
+                "description": data["description"],
+                "visibility": data["visibility"],
+                "cards_count": data["cards_count"],
+                "owner": data["owner"]
+            }
+            if new_deck not in deck_list:
+                deck_list.append(new_deck)
+                db.child("group").child(id).child("decks").set(deck_list)
+            else:
+                raise Exception("Deck already added to this group")
+        else:
+            db.child("group").child(id).child("decks").set([{
+                "id": data["id"],
+                "title": data["title"],
+                "description": data["description"],
+                "visibility": data["visibility"],
+                "cards_count": data["cards_count"],
+                "owner": data["owner"]
+            }])
+        return jsonify(message='User added successfully', status=201), 201
+    except Exception as e:
+        print(e)
+        return jsonify(message=f'User add failed {e}', status=400), 400

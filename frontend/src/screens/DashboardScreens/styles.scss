@@ -122,14 +122,37 @@
             color: #fff;
             margin-bottom: 0px;
         }
-        &.practice-deck {
+        .practice-deck {
             padding-top: 13px;
             .back-icon {
                 cursor: pointer;
             }
         }
     }
-    min-height: 98vh;
+    min-height: 98vh;   
+}
+.group-add-deck-card {
+    width: 23vw;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+}
+.group-add-deck-card:hover {
+    cursor: pointer;
+    box-shadow: 0 2px 8px #221daf;
+}
+.selected-card {
+    background: #ccc;
+}
+.group-deck-button {
+    background: #221daf;
+    color:#fff;
+    &:hover {
+        background: #fff;
+        color:#000;
+        border-color: #221daf;
+    }
 }
 
 .explore-page {
