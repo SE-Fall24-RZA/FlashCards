@@ -2,6 +2,8 @@
 from flask import Blueprint, jsonify, request
 from flask_cors import cross_origin
 from datetime import datetime
+import random
+import string
 
 try:
     from .. import firebase
@@ -64,11 +66,13 @@ def create():
         group_name = data['group_name']
         description = data['description']
         member = {"userId": data['localId'], "email": data['email']}
+        key = ''.join(random.choices(string.ascii_letters, k=6))
         
         db.child("group").push({
             "group_name": group_name,
             "members": [member],
-            "description": description
+            "description": description,
+            "join_key": key
         })
 
         return jsonify(message='Create Group Successful', status=201), 201
@@ -83,11 +87,16 @@ def addMemberToGroup(id):
         data = request.get_json()
         localId = data['localId']
         email = data['email']
-        member_list = db.child("group").child(id).child("members").get().val()
-        if {"userId": localId, "email": email} not in member_list:
-            member_list.append({"userId": localId, "email": email})
-            db.child("group").child(id).child("members").set(member_list)
-        return jsonify(message='User added successfully', status=201), 201
+        key = data['key']
+        group = db.child("group").child(id).get().val()
+        if key == group["join_key"]:
+            member_list = group["members"]
+            if {"userId": localId, "email": email} not in member_list:
+                member_list.append({"userId": localId, "email": email})
+                db.child("group").child(id).child("members").set(member_list)
+            return jsonify(message='User added successfully', status=201), 201
+        else:
+            raise Exception("Incorrect join key")
     except Exception as e:
         return jsonify(message=f'User add failed {e}', status=400), 400
     
@@ -174,5 +183,4 @@ def addDeckToGroup(id):
             }])
         return jsonify(message='User added successfully', status=201), 201
     except Exception as e:
-        print(e)
         return jsonify(message=f'User add failed {e}', status=400), 400

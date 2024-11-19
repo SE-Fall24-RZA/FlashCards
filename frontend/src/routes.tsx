@@ -8,6 +8,7 @@ import PracticeDeck from 'screens/DashboardScreens/PracticeDeck'
 import EditDeck from 'screens/DashboardScreens/EditDeck'
 import Home from 'screens/Home'
 import GroupDashboard from 'screens/DashboardScreens/GroupDashboard'
+import JoinGroup from 'screens/DashboardScreens/JoinGroup'
 
 const homeRoutes = [
   {
@@ -74,6 +75,10 @@ const dashboardRoutes = [
   {
     path: '/group/:id',
     element: <GroupDashboard />,
+  },
+  {
+    path: '/group/:id/:key',
+    element: <JoinGroup />,
   }
 ]
 

@@ -12,6 +12,7 @@ interface Group {
     group_name: string;
     description: string;
     members: User[];
+    join_key: string;
     decks: Deck[];
 }
 
@@ -36,6 +37,7 @@ const GroupDashboard = () => {
     const [canScrollLeftLib, setCanScrollLeftLib] = useState(false);
     const [canScrollRightLib, setCanScrollRightLib] = useState(false);
     const [modalOpen, setModalOpen] = useState(false)
+    const [urlModalOpen, setURLModalOpen] = useState(false)
     const [userDecks, setUserDecks] = useState<Deck[]>([])
     const [fetchingDecks, setFetchingDecks] = useState(true)
 
@@ -121,7 +123,7 @@ const GroupDashboard = () => {
                                 </div>
                                 <div className="col-md-5">
                                     <button className="btn btn-white mx-4" disabled={fetchingDecks} onClick={() => setModalOpen(true)}>Add Deck</button>
-                                    <button className="btn btn-white">Generate Group Invite Link</button>
+                                    <button className="btn btn-white" onClick={() => {setURLModalOpen(true)}}>Generate Group Invite Link</button>
                                 </div>
                             </div>
                         </Card>
@@ -217,8 +219,12 @@ const GroupDashboard = () => {
                     ))}
                 </div>
             </Modal>
+        
+            <Modal open={urlModalOpen} width="60vw" footer={<button onClick={() => setURLModalOpen(false)}>Close</button>}>
+                <h4>{window.location.href + "/" + group?.join_key}</h4>
+                <p>Share this link to invite other users to this group.</p>
+            </Modal>
         </div>
     )
 }
-
 export default GroupDashboard
