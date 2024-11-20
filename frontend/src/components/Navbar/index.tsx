@@ -53,17 +53,17 @@ const Navbar = ({ isDashboard, onFolderCreated }: NavbarProps) => {
                 </Link>
               </li>
               <Link to="/create-deck">
-                <button className="btn btn-main">
+                <button className="btn btn-main px-2">
                   <i className="lni lni-circle-plus mr-2"></i>
                   <span>Create Deck</span>
                 </button>
               </Link>
-              <button className="btn btn-main" onClick={() => setIsModalVisible(true)}>
+              <button className="btn btn-main px-2" onClick={() => setIsModalVisible(true)}>
                 <i className="lni lni-folder mr-2"></i>
                 <span>Create Folder</span>
               </button>
               <Link to="/create-group">
-                <button className="btn btn-main">
+                <button className="btn btn-main px-2">
                   <i className="lni lni-users mr-2"></i>
                   <span>Create Group</span>
                 </button>

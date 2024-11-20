@@ -59,6 +59,7 @@ const GroupDashboard = () => {
     const [deckToRemove, setDeckToRemove] = useState<Deck | null>(null)
     const [removeConfirm, setRemoveConfirm] = useState(false)
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+    const navigate = useNavigate()
 
     const sliderRefLibrary = useRef<HTMLDivElement>(null);
     const flashCardUser = window.localStorage.getItem("flashCardUser");
@@ -193,14 +194,19 @@ const GroupDashboard = () => {
                     <div className="container">
                         <div className="row">
                             <div className="col-md-12">
-                            <Card className="welcome-card border-[#E7EAED]">
+                            <Card className="welcome-card border-[#E7EAED] px-0 py-3">
                                 <div className="d-flex flex-row justify-content-between">
-                                    <div className="col-md-7">
+                                    <div className="col-md-6">
+                                        <h3 style={{cursor: "pointer"}}><i
+                                            className="lni lni-arrow-left back-icon"
+                                            onClick={() => navigate(-1)}
+                                        ></i></h3>
                                         <h3><b>{group.group_name}</b></h3>
                                         <p>{group.description}</p>
                                     </div>
-                                    <div className="col-md-5">
-                                        <button className="btn btn-white mx-4" disabled={fetchingDecks} onClick={() => setModalOpen(true)}>Add Deck</button>
+                                    <div className="col-md-6 d-flex flex-row justify-content-end mt-4">
+                                        <Link to={`/group/${id}/edit`}> <button className="btn btn-white">Edit</button> </Link>
+                                        <button className="btn btn-white mx-2" disabled={fetchingDecks} onClick={() => setModalOpen(true)}>Add Deck</button>
                                         <button className="btn btn-white" onClick={() => {setURLModalOpen(true)}}>Generate Group Invite Link</button>
                                     </div>
                                 </div>

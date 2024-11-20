@@ -10,6 +10,7 @@ import Home from 'screens/Home'
 import GroupDashboard from 'screens/DashboardScreens/GroupDashboard'
 import JoinGroup from 'screens/DashboardScreens/JoinGroup'
 import CreateGroup from 'screens/DashboardScreens/CreateGroup'
+import EditGroup from 'screens/DashboardScreens/EditGroup'
 
 const homeRoutes = [
   {
@@ -85,6 +86,10 @@ const dashboardRoutes = [
     path: '/create-group',
     element: <CreateGroup />,
   },
+  {
+    path: '/group/:id/edit',
+    element: <EditGroup />,
+  }
 ]
 
 export { homeRoutes, authRoutes, publicRoutes, dashboardRoutes }
