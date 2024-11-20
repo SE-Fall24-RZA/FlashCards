@@ -7,12 +7,14 @@ import http from "utils/api";
 import Swal from "sweetalert2";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import Navbar from "../../components/Navbar";
+import { setIn } from "formik";
 
 interface Group {
     group_name: string;
     description: string;
     members: User[];
     join_key: string;
+    owner: string;
     decks: Deck[];
 }
 
@@ -38,8 +40,12 @@ const GroupDashboard = () => {
     const [canScrollRightLib, setCanScrollRightLib] = useState(false);
     const [modalOpen, setModalOpen] = useState(false)
     const [urlModalOpen, setURLModalOpen] = useState(false)
+    const [removeModalOpen, setRemoveModalOpen] = useState(false)
     const [userDecks, setUserDecks] = useState<Deck[]>([])
     const [fetchingDecks, setFetchingDecks] = useState(true)
+    const [inGroup, setInGroup] = useState(false)
+    const [userToRemove, setUserToRemove] = useState<User | null>(null)
+    const [removeConfirm, setRemoveConfirm] = useState(false)
 
     const sliderRefLibrary = useRef<HTMLDivElement>(null);
     const flashCardUser = window.localStorage.getItem("flashCardUser");
@@ -65,6 +71,11 @@ const GroupDashboard = () => {
         try {
             const res = await http.get(`/group/${id}`);
             setGroup(res.data?.group);
+            for(const usr of res.data?.group.members) {
+                if(usr.userId === localId) {
+                    setInGroup(true)
+                }
+            }
           } finally {
             setFetchingGroup(false);
           }
@@ -108,85 +119,111 @@ const GroupDashboard = () => {
             setSelectedDeck(null)
         }
     }
+    const removeFromGroup = async(user: User | null) => {
+        try {
+            const res = await http.patch(`/group/${id}/removeMember`, {
+                userId: user
+            })
+            Swal.fire("Member removed Successfully!", "", "success").then(() => fetchGroup());
+        } catch (e) {
+            Swal.fire("Error removing member", "", "error")
+        } finally {
+            setUserToRemove(null)
+            setRemoveConfirm(false)
+            setRemoveModalOpen(false)
+        }
+    }
 
     return (
         <div className="group-page">
-            {group && (<section>
-                <div className="container">
-                    <div className="row">
-                        <div className="col-md-12">
-                        <Card className="welcome-card border-[#E7EAED]">
-                            <div className="d-flex flex-row justify-content-between">
-                                <div className="col-md-7">
-                                    <h3><b>{group.group_name}</b></h3>
-                                    <p>{group.description}</p>
-                                </div>
-                                <div className="col-md-5">
-                                    <button className="btn btn-white mx-4" disabled={fetchingDecks} onClick={() => setModalOpen(true)}>Add Deck</button>
-                                    <button className="btn btn-white" onClick={() => {setURLModalOpen(true)}}>Generate Group Invite Link</button>
-                                </div>
-                            </div>
-                        </Card>
-                        </div>
-                    </div>
-                </div>
-                <div className="container d-flex flex-row justify-content-between">
-                    <div className="col-md-8">
-                        <div>
-                            <h4>Group Decks:</h4>
-                            {!(group.decks) || group.decks.length === 0 ? (
-                                <div className="row justify-content-center empty-pane">
-                                    <div className="text-center">
-                                        <img className="img-fluid" src={EmptyImg} alt="No Decks" />
-                                        <p>This group has no study decks</p>
+            {group && (<>
+                {inGroup ? (<section>
+                    <div className="container">
+                        <div className="row">
+                            <div className="col-md-12">
+                            <Card className="welcome-card border-[#E7EAED]">
+                                <div className="d-flex flex-row justify-content-between">
+                                    <div className="col-md-7">
+                                        <h3><b>{group.group_name}</b></h3>
+                                        <p>{group.description}</p>
+                                    </div>
+                                    <div className="col-md-5">
+                                        <button className="btn btn-white mx-4" disabled={fetchingDecks} onClick={() => setModalOpen(true)}>Add Deck</button>
+                                        <button className="btn btn-white" onClick={() => {setURLModalOpen(true)}}>Generate Group Invite Link</button>
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="slider-container">
-                                    {canScrollLeftLib && (
-                                        <button className="arrow left" onClick={() => scrollLibrary("left")}>
-                                            <LeftOutlined />
-                                        </button>
-                                    )}
-                                    <div className="deck-slider" ref={sliderRefLibrary}>
-                                        {group.decks.map(({ id, title, description, visibility, cards_count }) => (
-                                            <div className="deck-card" key={id}>
-                                                <div className="d-flex justify-content-between align-items-center">
-                                                    <Link to={`/deck/${id}/practice`}>
-                                                        <h5>{title}</h5>
-                                                    </Link>
-                                                    <div className="d-flex gap-2 visibility-status align-items-center">
-                                                        {visibility === "public" ? <i className="lni lni-world"></i> : <i className="lni lni-lock-alt"></i>}
-                                                        {visibility}
+                            </Card>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="container d-flex flex-row justify-content-between">
+                        <div className="col-md-8">
+                            <div>
+                                <h4>Group Decks:</h4>
+                                {!(group.decks) || group.decks.length === 0 ? (
+                                    <div className="row justify-content-center empty-pane">
+                                        <div className="text-center">
+                                            <img className="img-fluid" src={EmptyImg} alt="No Decks" />
+                                            <p>This group has no study decks</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="slider-container">
+                                        {canScrollLeftLib && (
+                                            <button className="arrow left" onClick={() => scrollLibrary("left")}>
+                                                <LeftOutlined />
+                                            </button>
+                                        )}
+                                        <div className="deck-slider" ref={sliderRefLibrary}>
+                                            {group.decks.map(({ id, title, description, visibility, cards_count }) => (
+                                                <div className="deck-card" key={id}>
+                                                    <div className="d-flex justify-content-between align-items-center">
+                                                        <Link to={`/deck/${id}/practice`}>
+                                                            <h5>{title}</h5>
+                                                        </Link>
+                                                        <div className="d-flex gap-2 visibility-status align-items-center">
+                                                            {visibility === "public" ? <i className="lni lni-world"></i> : <i className="lni lni-lock-alt"></i>}
+                                                            {visibility}
+                                                        </div>
+                                                    </div>
+                                                    <p className="description">{description}</p>
+                                                    <p className="items-count">{cards_count} item(s)</p>
+                                                    <div className="menu">
+                                                        <Link to={`/deck/${id}/practice`}><button className="btn text-left"><i className="lni lni-book"></i> Practice</button></Link>
                                                     </div>
                                                 </div>
-                                                <p className="description">{description}</p>
-                                                <p className="items-count">{cards_count} item(s)</p>
-                                                <div className="menu">
-                                                    <Link to={`/deck/${id}/practice`}><button className="btn text-left"><i className="lni lni-book"></i> Practice</button></Link>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
+                                        {canScrollRightLib && (
+                                        <button className="arrow right" onClick={() => scrollLibrary("right")}>
+                                            <RightOutlined />
+                                        </button>
+                                        )}
                                     </div>
-                                    {canScrollRightLib && (
-                                    <button className="arrow right" onClick={() => scrollLibrary("right")}>
-                                        <RightOutlined />
-                                    </button>
-                                    )}
+                                )}
+                            </div>
+                        </div>
+                        <div className="col-md-3">
+                            <Card>
+                                <div className="d-flex flex-row align-items-center justify-content-between">
+                                    <h5>Group Members:</h5>
+                                    {group && group.owner != localId && (<button className="btn" onClick={() => {setRemoveModalOpen(true)}}><i className="lni lni-pencil py-0" ></i></button>)}
                                 </div>
-                            )}
+                                {group.members.map((m) => {
+                                    return (<p>{m.email}</p>)
+                                })}
+                            </Card>
                         </div>
                     </div>
-                    <div className="col-md-3">
-                        <Card>
-                            <h4>Group Members:</h4>
-                            {group.members.map((m) => {
-                                return <p>{m.email}</p>
-                            })}
-                        </Card>
-                    </div>
-                </div>
-            </section>)}
+                </section>) : 
+                (<div className="d-flex flex-column align-items-center my-5">
+                    <h4>You do not have perission to view this group's page</h4>
+                    <h6>Please contact a member of this group to receive a join link</h6>
+                    <Link to={`/`}>
+                        <button className="btn mx-2 group-deck-button my-5" >Return to Homepage</button>
+                    </Link>
+                </div>)}
+            </>)}
         
 
             <Modal title="User Decks" open={modalOpen} onCancel={() => setModalOpen(false)} width="75vw"
@@ -205,10 +242,11 @@ const GroupDashboard = () => {
                     {userDecks.map((deck) => (
                         <div 
                             className={selectedDeck && deck.id === selectedDeck.id ? 
-                                "group-add-deck-card mx-1 my-4 selected-card" : 
-                                "group-add-deck-card mx-1 my-4"} 
+                                "group-add-card mx-1 my-4 selected-card" : 
+                                "group-add-card mx-1 my-4"} 
                             key={deck.id}
                             onClick={() => setSelectedDeck(deck)}
+                            style={{width: "23vw"}}
                         >
                             <div className="d-flex justify-content-between align-items-center">
                                 <h5>{deck.title}</h5>
@@ -223,6 +261,40 @@ const GroupDashboard = () => {
             <Modal open={urlModalOpen} width="60vw" footer={<button onClick={() => setURLModalOpen(false)}>Close</button>}>
                 <h4>{window.location.href + "/" + group?.join_key}</h4>
                 <p>Share this link to invite other users to this group.</p>
+            </Modal>
+
+            <Modal title="Manage Group Members" open={removeModalOpen} width="50vw" 
+            footer={<>
+                {!removeConfirm && (<>
+                    <button onClick={() => setRemoveConfirm(true)} className="btn btn-danger mx-3" disabled={!userToRemove}>Remove from Group</button>
+                    <button onClick={() => {
+                        setRemoveModalOpen(false)
+                        setUserToRemove(null)
+                    }} className="btn mx-2">Cancel</button>
+                </>)}
+                {removeConfirm && (<>
+                    <button onClick={() => removeFromGroup(userToRemove)} className="btn btn-danger mx-3">Yes</button>
+                    <button onClick={() => setRemoveConfirm(false)} className="btn mx-2">No</button>
+                </>)}
+            </>}>
+                <>
+                    {!removeConfirm && group?.members.map((m: User) => {
+                        if(m.userId == userToRemove?.userId) {
+                            return (<div className="my-2 group-add-card selected-card">
+                                <p className="mb-0">{m.email}</p>
+                            </div>)
+                        }
+                        else {
+                            return (<div className="my-2 group-add-card" onClick={() => setUserToRemove(m)}>
+                            <p className="mb-0">{m.email}</p>
+                        </div>)
+                        }
+                    })}
+                    {removeConfirm && (<>
+                        <h4>Are you sure you want to remove user {userToRemove?.email} from the group?</h4>
+                        <p>This action cannot be undone</p>
+                </>)}
+                </>
             </Modal>
         </div>
     )

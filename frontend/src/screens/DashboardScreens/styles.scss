@@ -131,14 +131,14 @@
     }
     min-height: 98vh;   
 }
-.group-add-deck-card {
-    width: 23vw;
+.group-add-card {
+    // width: 23vw;
     padding: 15px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     flex-shrink: 0;
 }
-.group-add-deck-card:hover {
+.group-add-card:hover {
     cursor: pointer;
     box-shadow: 0 2px 8px #221daf;
 }

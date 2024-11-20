@@ -66,13 +66,15 @@ def create():
         group_name = data['group_name']
         description = data['description']
         member = {"userId": data['localId'], "email": data['email']}
+        owner = data['localId']
         key = ''.join(random.choices(string.ascii_letters, k=6))
         
         db.child("group").push({
             "group_name": group_name,
             "members": [member],
             "description": description,
-            "join_key": key
+            "join_key": key,
+            "owner": owner
         })
 
         return jsonify(message='Create Group Successful', status=201), 201
