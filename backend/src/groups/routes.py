@@ -183,6 +183,26 @@ def addDeckToGroup(id):
                 "cards_count": data["cards_count"],
                 "owner": data["owner"]
             }])
-        return jsonify(message='User added successfully', status=201), 201
+        return jsonify(message='Deck added successfully', status=201), 201
+    except Exception as e:
+        return jsonify(message=f'Deck add failed {e}', status=400), 400
+    
+@group_bp.route('/group/<id>/removeDeck', methods=['PATCH'])
+@cross_origin(supports_credentials=True)
+def removeDeckFromGroup(id):
+    '''This removes a deck from the specified group'''
+    try:
+        data = request.get_json()
+        group = db.child("group").child(id).get().val()
+        if "decks" in group.keys():
+            deck_list = group["decks"]
+            for i in range(0,len(deck_list)):
+                if deck_list[i]['id'] == data['id']:
+                    deck_list.pop(i)
+                    db.child("group").child(id).child("decks").set(deck_list)
+                    return jsonify(message='Deck added successfully', status=201), 201
+            raise Exception("Deck not assigned to this group")
+        else:
+            raise Exception("Deck not assigned to this group")
     except Exception as e:
         return jsonify(message=f'User add failed {e}', status=400), 400

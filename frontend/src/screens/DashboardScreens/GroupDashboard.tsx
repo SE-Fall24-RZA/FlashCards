@@ -29,6 +29,7 @@ interface Deck {
     description: string;
     visibility: string;
     cards_count: number;
+    owner: string;
 }
 
 
@@ -41,10 +42,12 @@ const GroupDashboard = () => {
     const [modalOpen, setModalOpen] = useState(false)
     const [urlModalOpen, setURLModalOpen] = useState(false)
     const [removeModalOpen, setRemoveModalOpen] = useState(false)
+    const [removeDeckModalOpen, setRemoveDeckModalOpen] = useState(false)
     const [userDecks, setUserDecks] = useState<Deck[]>([])
     const [fetchingDecks, setFetchingDecks] = useState(true)
     const [inGroup, setInGroup] = useState(false)
     const [userToRemove, setUserToRemove] = useState<User | null>(null)
+    const [deckToRemove, setDeckToRemove] = useState<Deck | null>(null)
     const [removeConfirm, setRemoveConfirm] = useState(false)
 
     const sliderRefLibrary = useRef<HTMLDivElement>(null);
@@ -133,6 +136,19 @@ const GroupDashboard = () => {
             setRemoveModalOpen(false)
         }
     }
+    const removeDeck = async(deck: Deck | null) => {
+        try {
+            const res = await http.patch(`/group/${id}/removeDeck`, {
+                id: deck?.id
+            })
+            Swal.fire("Deck removed Successfully!", "", "success").then(() => fetchGroup());
+        } catch (e) {
+            Swal.fire("Error removing deck", "", "error")
+        } finally {
+            setDeckToRemove(null)
+            setRemoveDeckModalOpen(false)
+        }
+    }
 
     return (
         <div className="group-page">
@@ -175,7 +191,7 @@ const GroupDashboard = () => {
                                             </button>
                                         )}
                                         <div className="deck-slider" ref={sliderRefLibrary}>
-                                            {group.decks.map(({ id, title, description, visibility, cards_count }) => (
+                                            {group.decks.map(({ id, title, description, visibility, cards_count, owner }) => (
                                                 <div className="deck-card" key={id}>
                                                     <div className="d-flex justify-content-between align-items-center">
                                                         <Link to={`/deck/${id}/practice`}>
@@ -190,6 +206,13 @@ const GroupDashboard = () => {
                                                     <p className="items-count">{cards_count} item(s)</p>
                                                     <div className="menu">
                                                         <Link to={`/deck/${id}/practice`}><button className="btn text-left"><i className="lni lni-book"></i> Practice</button></Link>
+                                                        {(owner == localId || group.owner == localId) && (<button className="btn text-left" 
+                                                            onClick={() => {
+                                                                setDeckToRemove({ id, title, description, visibility, cards_count, owner })
+                                                                setRemoveDeckModalOpen(true)
+                                                            }}>
+                                                                <i className="lni lni-trash-can"></i> Remove
+                                                        </button>)}
                                                     </div>
                                                 </div>
                                             ))}
@@ -207,7 +230,7 @@ const GroupDashboard = () => {
                             <Card>
                                 <div className="d-flex flex-row align-items-center justify-content-between">
                                     <h5>Group Members:</h5>
-                                    {group && group.owner != localId && (<button className="btn" onClick={() => {setRemoveModalOpen(true)}}><i className="lni lni-pencil py-0" ></i></button>)}
+                                    {group && group.owner == localId && (<button className="btn" onClick={() => {setRemoveModalOpen(true)}}><i className="lni lni-pencil py-0" ></i></button>)}
                                 </div>
                                 {group.members.map((m) => {
                                     return (<p>{m.email}</p>)
@@ -258,12 +281,12 @@ const GroupDashboard = () => {
                 </div>
             </Modal>
         
-            <Modal open={urlModalOpen} width="60vw" footer={<button onClick={() => setURLModalOpen(false)}>Close</button>}>
+            <Modal open={urlModalOpen} width="60vw" onCancel={() => setURLModalOpen(false)} footer={<button onClick={() => setURLModalOpen(false)}>Close</button>}>
                 <h4>{window.location.href + "/" + group?.join_key}</h4>
                 <p>Share this link to invite other users to this group.</p>
             </Modal>
 
-            <Modal title="Manage Group Members" open={removeModalOpen} width="50vw" 
+            <Modal title="Manage Group Members" open={removeModalOpen} onCancel={() => setRemoveModalOpen(false)} width="50vw" 
             footer={<>
                 {!removeConfirm && (<>
                     <button onClick={() => setRemoveConfirm(true)} className="btn btn-danger mx-3" disabled={!userToRemove}>Remove from Group</button>
@@ -294,6 +317,16 @@ const GroupDashboard = () => {
                         <h4>Are you sure you want to remove user {userToRemove?.email} from the group?</h4>
                         <p>This action cannot be undone</p>
                 </>)}
+                </>
+            </Modal>
+
+            <Modal title="Confirm Deck Removal" open={removeDeckModalOpen} width="50vw" onCancel={() => setRemoveDeckModalOpen(false)}
+            footer={<>
+                <button onClick={() => removeDeck(deckToRemove)} className="btn btn-danger mx-3">Yes</button>
+                <button onClick={() => setRemoveDeckModalOpen(false)} className="btn mx-2">No</button>
+            </>}>
+                <>
+                    <h4>Are you sure you want to remove deck "{deckToRemove?.title}" from the group?</h4>
                 </>
             </Modal>
         </div>
