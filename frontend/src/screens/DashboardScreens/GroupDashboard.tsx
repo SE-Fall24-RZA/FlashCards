@@ -1,4 +1,4 @@
-import { Card, Popconfirm, Button, Modal } from "antd";
+import { Card, Popconfirm, Button, Modal, Table } from "antd";
 import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import EmptyImg from "assets/images/empty.svg";
@@ -32,6 +32,14 @@ interface Deck {
     owner: string;
 }
 
+interface LeaderboardEntry {
+    userEmail: string;
+    correct: number;
+    incorrect: number;
+    attempts: number;
+    lastAttempt: string | Date;
+}
+
 
 const GroupDashboard = () => {
     const [group, setGroup] = useState<Group | null>(null)
@@ -43,12 +51,14 @@ const GroupDashboard = () => {
     const [urlModalOpen, setURLModalOpen] = useState(false)
     const [removeModalOpen, setRemoveModalOpen] = useState(false)
     const [removeDeckModalOpen, setRemoveDeckModalOpen] = useState(false)
+    const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false)
     const [userDecks, setUserDecks] = useState<Deck[]>([])
     const [fetchingDecks, setFetchingDecks] = useState(true)
     const [inGroup, setInGroup] = useState(false)
     const [userToRemove, setUserToRemove] = useState<User | null>(null)
     const [deckToRemove, setDeckToRemove] = useState<Deck | null>(null)
     const [removeConfirm, setRemoveConfirm] = useState(false)
+    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
 
     const sliderRefLibrary = useRef<HTMLDivElement>(null);
     const flashCardUser = window.localStorage.getItem("flashCardUser");
@@ -149,6 +159,32 @@ const GroupDashboard = () => {
             setRemoveDeckModalOpen(false)
         }
     }
+    const fetchLeaderboard = async (deckId: string) => {
+        try {
+            const res = await http.get(`/deck/${deckId}/leaderboard`);
+            // Format lastAttempt before setting leaderboard data
+            const memberEmails = group?.members.map((usr) => {return usr.email})
+            const formattedLeaderboard: LeaderboardEntry[] = []
+            for(const entry of res.data.leaderboard) {
+                if(memberEmails && (memberEmails.includes(entry.userEmail))) {
+                    formattedLeaderboard.push({...entry, lastAttempt: new Date(entry.lastAttempt).toLocaleString()})
+                }
+            }
+            setLeaderboard(formattedLeaderboard);
+        } catch (error) {
+            console.error("Error fetching leaderboard:", error);
+        }
+    };
+    const leaderboardColumns = [
+        {
+          title: "Rank", // New column for rank
+          render: (_: any, __: any, index: number) => index + 1, // Automatically generates the row number
+          key: "rank"
+        },
+        { title: "Email", dataIndex: "userEmail", key: "userEmail" },
+        { title: "Correct Answers", dataIndex: "correct", key: "correct" },
+        { title: "Incorrect Answers", dataIndex: "incorrect", key: "incorrect" }
+    ];
 
     return (
         <div className="group-page">
@@ -205,8 +241,15 @@ const GroupDashboard = () => {
                                                     <p className="description">{description}</p>
                                                     <p className="items-count">{cards_count} item(s)</p>
                                                     <div className="menu">
-                                                        <Link to={`/deck/${id}/practice`}><button className="btn text-left"><i className="lni lni-book"></i> Practice</button></Link>
-                                                        {(owner == localId || group.owner == localId) && (<button className="btn text-left" 
+                                                        {/* <Link to={`/deck/${id}/practice`}><button className="btn text-left"><i className="lni lni-book"></i> Practice</button></Link> */}
+                                                        <button className="btn text-left" 
+                                                            onClick={() => {
+                                                                fetchLeaderboard(id)
+                                                                setLeaderboardModalOpen(true)
+                                                            }}>
+                                                                <i className="lni lni-cup"></i> Group Leaderboard
+                                                        </button>
+                                                        {(owner == localId || group.owner == localId) && (<button className="btn text-left text-danger" 
                                                             onClick={() => {
                                                                 setDeckToRemove({ id, title, description, visibility, cards_count, owner })
                                                                 setRemoveDeckModalOpen(true)
@@ -316,7 +359,7 @@ const GroupDashboard = () => {
                     {removeConfirm && (<>
                         <h4>Are you sure you want to remove user {userToRemove?.email} from the group?</h4>
                         <p>This action cannot be undone</p>
-                </>)}
+                    </>)}
                 </>
             </Modal>
 
@@ -328,6 +371,18 @@ const GroupDashboard = () => {
                 <>
                     <h4>Are you sure you want to remove deck "{deckToRemove?.title}" from the group?</h4>
                 </>
+            </Modal>
+
+            <Modal title="Group Leaderboard" open={leaderboardModalOpen} width="75vw" onCancel={() => setLeaderboardModalOpen(false)}
+            footer={<>
+                <button onClick={() => setLeaderboardModalOpen(false)} className="btn mx-2">Close</button>
+            </>}>
+                <Table
+                    columns={leaderboardColumns}
+                    dataSource={leaderboard}
+                    pagination={false}
+                    rowKey="userEmail"  // Ensure a unique key for each row
+                />
             </Modal>
         </div>
     )
