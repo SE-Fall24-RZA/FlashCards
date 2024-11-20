@@ -62,6 +62,12 @@ const Navbar = ({ isDashboard, onFolderCreated }: NavbarProps) => {
                 <i className="lni lni-folder mr-2"></i>
                 <span>Create Folder</span>
               </button>
+              <Link to="/create-group">
+                <button className="btn btn-main">
+                  <i className="lni lni-users mr-2"></i>
+                  <span>Create Group</span>
+                </button>
+              </Link>
               <li className="nav-item" onClick={handleLogout} style={{ cursor: "pointer", fontWeight: "600" }}>
                 <i className="lni lni-cross-circle mr-2" style={{ fontWeight: "600" }}></i> Logout
               </li>

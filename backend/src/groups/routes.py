@@ -27,7 +27,6 @@ def getGroup(id):
             status=200
         ), 200
     except Exception as e:
-        print(e)
         return jsonify(
             group={},
             message=f"An error occurred: {e}",
@@ -47,9 +46,10 @@ def getdecks():
             allGroups = db.child("group").get()
             for grp in allGroups.each():
                 obj = grp.val()
-                if localId in obj['members']:
-                    obj['id'] = grp.key()
-                    groups.append(obj)
+                for usr in obj['members']:
+                    if localId == usr["userId"] :
+                        obj['id'] = grp.key()
+                        groups.append(obj)
         else:
             raise Exception("A valid user ID must be provided.")
 
@@ -110,12 +110,12 @@ def removeMemberFromGroup(id):
         data = request.get_json()
         userId = data['userId']
         member_list = db.child("group").child(id).child("members").get().val()
-        if userId in member_list:
-            member_list.remove(userId)
-            db.child("group").child(id).child("members").set(member_list)
-        else:
-            raise Exception("User is not in this group.")
-        return jsonify(message='User removed successfully', status=201), 201
+        for i in range(0, len(member_list)):
+            if userId == member_list[i]["userId"]:
+                member_list.pop(i)
+                db.child("group").child(id).child("members").set(member_list)
+                return jsonify(message='User removed successfully', status=201), 201
+        raise Exception("User is not in this group.")
     except Exception as e:
         return jsonify(message=f'User remove failed {e}', status=400), 400
     
