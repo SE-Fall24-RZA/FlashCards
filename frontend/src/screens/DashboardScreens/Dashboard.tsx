@@ -47,10 +47,13 @@ const Dashboard = () => {
 // Refs for sliders
   const sliderRefLibrary = useRef<HTMLDivElement>(null);
   const sliderRefRecent = useRef<HTMLDivElement>(null);
+  const sliderRefGroup = useRef<HTMLDivElement>(null);
   const [canScrollLeftLib, setCanScrollLeftLib] = useState(false);
   const [canScrollRightLib, setCanScrollRightLib] = useState(false);
   const [canScrollLeftRec, setCanScrollLeftRec] = useState(false);
-  const [canScrollRightRec, setCanScrollRightRec] = useState(false);  
+  const [canScrollRightRec, setCanScrollRightRec] = useState(false);
+  const [canScrollLeftGroup, setCanScrollLeftGroup] = useState(false);
+  const [canScrollRightGroup, setCanScrollRightGroup] = useState(false);  
   
   const flashCardUser = window.localStorage.getItem("flashCardUser");
   const { localId } = (flashCardUser && JSON.parse(flashCardUser)) || {};
@@ -66,18 +69,24 @@ const Dashboard = () => {
   useEffect(() => {
     updateArrowsVisibilityLibrary();
     updateArrowsVisibilityRecent();
+    updateArrowsVisibilityGroups();
     const sliderLib = sliderRefLibrary.current;
     const sliderRec = sliderRefRecent.current;
+    const sliderGroup = sliderRefGroup.current;
 
     if (sliderLib) {
       sliderLib.addEventListener("scroll", updateArrowsVisibilityLibrary);
-      return () => sliderLib.removeEventListener("scroll", updateArrowsVisibilityLibrary);
+      //return () => sliderLib.removeEventListener("scroll", updateArrowsVisibilityLibrary);
     }
     if (sliderRec) {
       sliderRec.addEventListener("scroll", updateArrowsVisibilityRecent);
-      return () => sliderRec.removeEventListener("scroll", updateArrowsVisibilityRecent);
+      //return () => sliderRec.removeEventListener("scroll", updateArrowsVisibilityRecent);
     }
-  }, [decks]);
+    if (sliderGroup){
+      sliderGroup.addEventListener("scroll", updateArrowsVisibilityGroups);
+      //return () => sliderGroup.removeEventListener("scroll", updateArrowsVisibilityGroups);
+    }
+  }, [decks, groups]);
 
   const fetchDecks = async () => {
     setFetchingDecks(true);
@@ -115,7 +124,6 @@ const Dashboard = () => {
     try {
       const res = await http.get("/group/all", { params: { localId: localId } });
       setGroups(res.data?.groups || []);
-      console.log(res.data?.groups)
     } catch (err) {
       console.error("Error fetching folders:", err);
     }
@@ -166,7 +174,7 @@ const Dashboard = () => {
     if (sliderRefLibrary.current) {
       const { scrollLeft, scrollWidth, clientWidth } = sliderRefLibrary.current;
       setCanScrollLeftLib(scrollLeft > 0);
-      setCanScrollRightLib(scrollLeft + clientWidth < scrollWidth);
+      setCanScrollRightLib(scrollLeft + clientWidth < scrollWidth - 1);
     }
   };
 
@@ -174,7 +182,15 @@ const Dashboard = () => {
     if (sliderRefRecent.current) {
       const { scrollLeft, scrollWidth, clientWidth } = sliderRefRecent.current;
       setCanScrollLeftRec(scrollLeft > 0);
-      setCanScrollRightRec(scrollLeft + clientWidth < scrollWidth);
+      setCanScrollRightRec(scrollLeft + clientWidth < scrollWidth - 1);
+    }
+  };
+
+  const updateArrowsVisibilityGroups = () => {
+    if (sliderRefGroup.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = sliderRefGroup.current;
+      setCanScrollLeftGroup(scrollLeft > 0);
+      setCanScrollRightGroup(scrollLeft + clientWidth < scrollWidth - 1);
     }
   };
 
@@ -189,6 +205,13 @@ const Dashboard = () => {
     if (sliderRefRecent.current) {
       const scrollAmount = direction === "left" ? -300 : 300;
       sliderRefRecent.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  const scrollGroups = (direction: "left" | "right") => {
+    if (sliderRefGroup.current) {
+      const scrollAmount = direction === "left" ? -300 : 300;
+      sliderRefGroup.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
     }
   };
 
@@ -367,12 +390,12 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="slider-container">
-                {canScrollLeftRec && (
-                  <button className="arrow left" onClick={() => scrollRecent("left")}>
+                {canScrollLeftGroup && (
+                  <button className="arrow left" onClick={() => scrollGroups("left")}>
                     <LeftOutlined />
                   </button>
                 )}
-                <div className="deck-slider" ref={sliderRefRecent}>
+                <div className="deck-slider" ref={sliderRefGroup}>
                   {groups.map((grp) => (
                     <div className="deck-card" key={grp.id}>
                       <div className="d-flex justify-content-between align-items-center">
@@ -396,8 +419,8 @@ const Dashboard = () => {
                     </div>
                   ))}
                 </div>
-                {canScrollRightRec && (
-                  <button className="arrow right" onClick={() => scrollRecent("right")}>
+                {canScrollRightGroup && (
+                  <button className="arrow right" onClick={() => scrollGroups("right")}>
                     <RightOutlined />
                   </button>
                 )}
