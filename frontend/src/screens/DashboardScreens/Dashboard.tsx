@@ -25,6 +25,16 @@ interface Folder {
   decks: Deck[];
 }
 
+interface Group {
+  id: string;
+  group_name: string;
+  description: string;
+  members: {userId: string; email: string;}[];
+  join_key: string;
+  owner: string;
+  decks: Deck[];
+}
+
 const Dashboard = () => {
   const [decks, setDecks] = useState<Deck[]>([]);
   const [recentDecks, setRecentDecks] = useState<Deck[]>([]);
@@ -32,14 +42,18 @@ const Dashboard = () => {
   const [fetchingDecks, setFetchingDecks] = useState(false);
   const [isFolderPopupVisible, setIsFolderPopupVisible] = useState(false);
   const [selectedFolderDecks, setSelectedFolderDecks] = useState<Deck[]>([]);
+  const [groups, setGroups] = useState<Group[]>([])
 
 // Refs for sliders
   const sliderRefLibrary = useRef<HTMLDivElement>(null);
   const sliderRefRecent = useRef<HTMLDivElement>(null);
+  const sliderRefGroup = useRef<HTMLDivElement>(null);
   const [canScrollLeftLib, setCanScrollLeftLib] = useState(false);
   const [canScrollRightLib, setCanScrollRightLib] = useState(false);
   const [canScrollLeftRec, setCanScrollLeftRec] = useState(false);
-  const [canScrollRightRec, setCanScrollRightRec] = useState(false);  
+  const [canScrollRightRec, setCanScrollRightRec] = useState(false);
+  const [canScrollLeftGroup, setCanScrollLeftGroup] = useState(false);
+  const [canScrollRightGroup, setCanScrollRightGroup] = useState(false);  
   
   const flashCardUser = window.localStorage.getItem("flashCardUser");
   const { localId } = (flashCardUser && JSON.parse(flashCardUser)) || {};
@@ -49,23 +63,30 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDecks();
     fetchFolders();
+    fetchGroups();
   }, []);
 
   useEffect(() => {
     updateArrowsVisibilityLibrary();
     updateArrowsVisibilityRecent();
+    updateArrowsVisibilityGroups();
     const sliderLib = sliderRefLibrary.current;
     const sliderRec = sliderRefRecent.current;
+    const sliderGroup = sliderRefGroup.current;
 
     if (sliderLib) {
       sliderLib.addEventListener("scroll", updateArrowsVisibilityLibrary);
-      return () => sliderLib.removeEventListener("scroll", updateArrowsVisibilityLibrary);
+      //return () => sliderLib.removeEventListener("scroll", updateArrowsVisibilityLibrary);
     }
     if (sliderRec) {
       sliderRec.addEventListener("scroll", updateArrowsVisibilityRecent);
-      return () => sliderRec.removeEventListener("scroll", updateArrowsVisibilityRecent);
+      //return () => sliderRec.removeEventListener("scroll", updateArrowsVisibilityRecent);
     }
-  }, [decks]);
+    if (sliderGroup){
+      sliderGroup.addEventListener("scroll", updateArrowsVisibilityGroups);
+      //return () => sliderGroup.removeEventListener("scroll", updateArrowsVisibilityGroups);
+    }
+  }, [decks, groups]);
 
   const fetchDecks = async () => {
     setFetchingDecks(true);
@@ -99,6 +120,14 @@ const Dashboard = () => {
       console.error("Error fetching folders:", err);
     }
   };
+  const fetchGroups = async () => {
+    try {
+      const res = await http.get("/group/all", { params: { localId: localId } });
+      setGroups(res.data?.groups || []);
+    } catch (err) {
+      console.error("Error fetching folders:", err);
+    }
+  }
   const updateLastOpened = async (deckId: string) => {
     const timestamp = new Date().toISOString(); // Get the current timestamp
     await http.patch(`/deck/updateLastOpened/${deckId}`, { lastOpened: timestamp });
@@ -145,7 +174,7 @@ const Dashboard = () => {
     if (sliderRefLibrary.current) {
       const { scrollLeft, scrollWidth, clientWidth } = sliderRefLibrary.current;
       setCanScrollLeftLib(scrollLeft > 0);
-      setCanScrollRightLib(scrollLeft + clientWidth < scrollWidth);
+      setCanScrollRightLib(scrollLeft + clientWidth < scrollWidth - 1);
     }
   };
 
@@ -153,7 +182,15 @@ const Dashboard = () => {
     if (sliderRefRecent.current) {
       const { scrollLeft, scrollWidth, clientWidth } = sliderRefRecent.current;
       setCanScrollLeftRec(scrollLeft > 0);
-      setCanScrollRightRec(scrollLeft + clientWidth < scrollWidth);
+      setCanScrollRightRec(scrollLeft + clientWidth < scrollWidth - 1);
+    }
+  };
+
+  const updateArrowsVisibilityGroups = () => {
+    if (sliderRefGroup.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = sliderRefGroup.current;
+      setCanScrollLeftGroup(scrollLeft > 0);
+      setCanScrollRightGroup(scrollLeft + clientWidth < scrollWidth - 1);
     }
   };
 
@@ -170,6 +207,23 @@ const Dashboard = () => {
       sliderRefRecent.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
     }
   };
+
+  const scrollGroups = (direction: "left" | "right") => {
+    if (sliderRefGroup.current) {
+      const scrollAmount = direction === "left" ? -300 : 300;
+      sliderRefGroup.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  const handleLeaveGroup = async (id: string) => {
+    try {
+      await http.patch(`/group/${id}/removeMember`, { userId: localId });
+      fetchGroups()
+      Swal.fire("You have left the group", "", "success");
+    } catch (err) {
+      Swal.fire("Failed to leave group", "", "error");
+    }
+  }
 
   return (
     <div className="dashboard-page dashboard-commons">
@@ -318,6 +372,55 @@ const Dashboard = () => {
                 </div>
                 {canScrollRightRec && (
                   <button className="arrow right" onClick={() => scrollRecent("right")}>
+                    <RightOutlined />
+                  </button>
+                )}
+              </div>
+            )}
+        </div>
+
+        {/* Groups Section */}
+        <div className="row mt-4">
+            <div className="col-md-12">
+              <p className="title">Groups</p>
+            </div>
+            {groups.length === 0 ? (
+              <div className="row justify-content-center">
+                <p>No Groups</p>
+              </div>
+            ) : (
+              <div className="slider-container">
+                {canScrollLeftGroup && (
+                  <button className="arrow left" onClick={() => scrollGroups("left")}>
+                    <LeftOutlined />
+                  </button>
+                )}
+                <div className="deck-slider" ref={sliderRefGroup}>
+                  {groups.map((grp) => (
+                    <div className="deck-card" key={grp.id}>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <Link to={`/group/${grp.id}/`}>
+                          <h5>{grp.group_name}</h5>
+                        </Link>
+                      </div>
+                      <p className="description">{grp.description}</p>
+                      <p className="items-count">{grp.members.length} member(s)</p>
+                      <div className="menu">
+                        <Link to={`/group/${grp.id}`}><button className="btn text-left"><i className="lni lni-users"></i> Group Dashboard</button></Link>
+                        <Popconfirm
+                          title={`Are you sure you want to leave group "${grp.group_name}"?`}
+                          onConfirm={() => handleLeaveGroup(grp.id)}
+                          okText="Yes"
+                          cancelText="No"
+                        >
+                            <button className="btn text-danger"><i className="lni lni-exit"></i> Leave</button>
+                        </Popconfirm>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {canScrollRightGroup && (
+                  <button className="arrow right" onClick={() => scrollGroups("right")}>
                     <RightOutlined />
                   </button>
                 )}

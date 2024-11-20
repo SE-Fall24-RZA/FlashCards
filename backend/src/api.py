@@ -34,17 +34,20 @@ def create_app():
             from .deck.routes import deck_bp
             from .cards.routes import card_bp
             from .folders.routes import folder_bp
+            from .groups.routes import group_bp
         except ImportError:
             from auth.routes import auth_bp
             from deck.routes import deck_bp
             from cards.routes import card_bp
             from folders.routes import folder_bp
+            from groups.routes import group_bp
 
         # Register Blueprints
         app.register_blueprint(auth_bp)
         app.register_blueprint(deck_bp)
         app.register_blueprint(card_bp)
         app.register_blueprint(folder_bp)
+        app.register_blueprint(group_bp)
 
     return app
     
