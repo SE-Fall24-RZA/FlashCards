@@ -134,6 +134,9 @@ def updateGroup(id):
         data = request.get_json()
         group_name = data['group_name']
         description = data['description']
+        group = db.child("group").child(id).get()
+        if group.val() == None:
+            raise Exception("Group does not exist")
         db.child("group").child(id).update({
             "group_name": group_name,
             "description": description
@@ -147,6 +150,9 @@ def updateGroup(id):
 def deleteGroup(id):
     '''This method deletes a specific group by its ID.'''
     try:
+        group = db.child("group").child(id).get()
+        if group.val() == None:
+            raise Exception("Group does not exist")
         db.child("group").child(id).remove()
         return jsonify(
             message='Group removed successfully',
@@ -212,4 +218,4 @@ def removeDeckFromGroup(id):
         else:
             raise Exception("Deck not assigned to this group")
     except Exception as e:
-        return jsonify(message=f'User add failed {e}', status=400), 400
+        return jsonify(message=f'Deck remove failed {e}', status=400), 400
