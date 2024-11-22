@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - group31-fall24
   pull_request:
     branches:
       - main
+      - group31-fall24
 
 jobs:
   build:
@@ -26,6 +28,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install coverage pytest pytest-cov flask firebase-admin flask-cors
           if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+
+      - name: Build init file
+        run: |
+          cd backend
+          cd src
+          touch __init__.py
+          echo "import pyrebase" >> __init__.py
+          echo "config = {" >> __init__.py
+          echo "  'apiKey': \"${{ secrets.API_KEY }}\", " >> __init__.py
+          echo "  'authDomain': \"${{ secrets.AUTH_DOMAIN }}\", " >> __init__.py
+          echo "  'databaseURL': \"${{ secrets.DATABASE_URL }}\", " >> __init__.py
+          echo "  'projectId': \"${{ secrets.PROJECT_ID }}\", " >> __init__.py
+          echo "  'storageBucket': \"${{ secrets.STORAGE_BUCKET }}\", " >> __init__.py
+          echo "  'messagingSenderId': \"${{ secrets.MESSAGING_ID }}\", " >> __init__.py
+          echo "  'appId': \"${{ secrets.APP_ID }}\" " >> __init__.py
+          echo "} " >> __init__.py
+          echo "firebase = pyrebase.initialize_app(config) " >> __init__.py
 
       - name: Run backend tests with coverage
         run: |
