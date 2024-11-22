@@ -21,11 +21,18 @@ def getGroup(id):
     '''This method fetches a specific group by its ID.'''
     try:
         group = db.child("group").child(id).get()
-        return jsonify(
-            group=group.val(),
-            message='Fetched group successfully',
-            status=200
-        ), 200
+        if group.val() != None:
+            return jsonify(
+                group=group.val(),
+                message='Fetched group successfully',
+                status=200
+            ), 200
+        else:
+            return jsonify(
+                group=None,
+                message='Group not found',
+                status=404
+            ), 404
     except Exception as e:
         return jsonify(
             group={},
@@ -55,7 +62,7 @@ def getdecks():
 
         return jsonify(groups=groups, message='Fetching groups successfully', status=200), 200
     except Exception as e:
-        return jsonify(decks=[], message=f"An error occurred {e}", status=400), 400
+        return jsonify(groups=[], message=f"An error occurred {e}", status=400), 400
 
 @group_bp.route('/group/create', methods=['POST'])
 @cross_origin(supports_credentials=True)
@@ -96,7 +103,7 @@ def addMemberToGroup(id):
             if {"userId": localId, "email": email} not in member_list:
                 member_list.append({"userId": localId, "email": email})
                 db.child("group").child(id).child("members").set(member_list)
-            return jsonify(message='User added successfully', status=201), 201
+            return jsonify(message='User added successfully', status=200), 200
         else:
             raise Exception("Incorrect join key")
     except Exception as e:
@@ -114,7 +121,7 @@ def removeMemberFromGroup(id):
             if userId == member_list[i]["userId"]:
                 member_list.pop(i)
                 db.child("group").child(id).child("members").set(member_list)
-                return jsonify(message='User removed successfully', status=201), 201
+                return jsonify(message='User removed successfully', status=200), 200
         raise Exception("User is not in this group.")
     except Exception as e:
         return jsonify(message=f'User remove failed {e}', status=400), 400
@@ -131,7 +138,7 @@ def updateGroup(id):
             "group_name": group_name,
             "description": description
         })
-        return jsonify(message='Group updated successfully', status=201), 201
+        return jsonify(message='Group updated successfully', status=200), 200
     except Exception as e:
         return jsonify(message=f'Group update failed {e}', status=400), 400
     
@@ -183,7 +190,7 @@ def addDeckToGroup(id):
                 "cards_count": data["cards_count"],
                 "owner": data["owner"]
             }])
-        return jsonify(message='Deck added successfully', status=201), 201
+        return jsonify(message='Deck added successfully', status=200), 200
     except Exception as e:
         return jsonify(message=f'Deck add failed {e}', status=400), 400
     
@@ -200,7 +207,7 @@ def removeDeckFromGroup(id):
                 if deck_list[i]['id'] == data['id']:
                     deck_list.pop(i)
                     db.child("group").child(id).child("decks").set(deck_list)
-                    return jsonify(message='Deck added successfully', status=201), 201
+                    return jsonify(message='Deck added successfully', status=200), 200
             raise Exception("Deck not assigned to this group")
         else:
             raise Exception("Deck not assigned to this group")
