@@ -21,8 +21,23 @@ class TestDeck(unittest.TestCase):
     def setUp(self):
         self.app=Flask(__name__, instance_relative_config=False)
         self.app.register_blueprint(deck_bp)
-        self.app=self.app.test_client()
         # self.client = self.app.test_client()
+        self.app=self.app.test_client()
+        response2=self.app.get('/deck/share',query_string=dict(localId='Test2'))
+        response2_data = json.loads(response2.data)
+        if response2 and response2_data:
+            for d in response2_data["shared_decks"]:
+                self.app.patch("/deck/share/remove", data=json.dumps(
+                    dict(userId='Test2', deckId=d["id"])), 
+                    content_type='application/json')
+        response=self.app.get('/deck/all',query_string=dict(localId='Test'))
+        response_data = json.loads(response.data)
+        if response and response_data:
+            for d in response_data["decks"]:
+                self.app.delete("/deck/delete/" + d["id"])
+        
+        
+        
         
     def test_deck_id_route_get_valid_id(self):
         '''Test the deck/id route of our app with a valid deck id'''
@@ -365,5 +380,101 @@ class TestDeck(unittest.TestCase):
         assert response.status_code == 500
         response_data = json.loads(response.data)
         assert response_data['message'] == "Failed to update leaderboard"
+
+    def test_share_deck(self):
+        with self.app:
+            self.app.post('/deck/create', data=json.dumps(
+                dict(localId='Test', title='TestDeck', description='This is a test deck', visibility='public')), 
+                content_type='application/json')
+            response0 = self.app.get('deck/all', query_string=dict(localId='Test'))
+            response0_data = json.loads(response0.data)
+            thisDeck = ""
+            for d in response0_data["decks"]:
+                if d['title'] == 'TestDeck':
+                    thisDeck = d['id']
+            response1 = self.app.get('deck/share', query_string=dict(localId='Test2'))
+            response1_data = json.loads(response1.data)
+            assert len(response1_data['shared_decks']) == 0
+            response2 = self.app.post('/deck/share', data=json.dumps(
+                dict(userId='Test2', deckId=thisDeck)), 
+                content_type='application/json')
+            assert response2.status_code == 200
+            response3 = self.app.get('deck/share', query_string=dict(localId='Test2'))
+            response3_data = json.loads(response3.data)
+            assert len(response3_data['shared_decks']) == 1
+
+    def test_remove_share_deck(self):
+        with self.app:
+            self.app.post('/deck/create', data=json.dumps(
+                dict(localId='Test', title='TestDeck', description='This is a test deck', visibility='public')), 
+                content_type='application/json')
+            response0 = self.app.get('deck/all', query_string=dict(localId='Test'))
+            response0_data = json.loads(response0.data)
+            thisDeck = ""
+            for d in response0_data["decks"]:
+                if d['title'] == 'TestDeck':
+                    thisDeck = d['id']
+            self.app.post('/deck/share', data=json.dumps(
+                dict(userId='Test2', deckId=thisDeck)), 
+                content_type='application/json')
+            response1 = self.app.get('deck/share', query_string=dict(localId='Test2'))
+            response1_data = json.loads(response1.data)
+            assert len(response1_data['shared_decks']) == 1
+            response2 = self.app.patch("/deck/share/remove", data=json.dumps(
+                dict(userId='Test2', deckId=thisDeck)), 
+                content_type='application/json')
+            assert response2.status_code == 200
+            response3 = self.app.get('deck/share', query_string=dict(localId='Test2'))
+            response3_data = json.loads(response3.data)
+            assert len(response3_data['shared_decks']) == 0
+
+    def test_share_repeat_deck(self):
+        with self.app:
+            self.app.post('/deck/create', data=json.dumps(
+                dict(localId='Test', title='TestDeck', description='This is a test deck', visibility='public')), 
+                content_type='application/json')
+            response0 = self.app.get('deck/all', query_string=dict(localId='Test'))
+            response0_data = json.loads(response0.data)
+            thisDeck = ""
+            for d in response0_data["decks"]:
+                if d['title'] == 'TestDeck':
+                    thisDeck = d['id']
+            self.app.post('/deck/share', data=json.dumps(
+                dict(userId='Test2', deckId=thisDeck)), 
+                content_type='application/json')
+            response1 = self.app.get('deck/share', query_string=dict(localId='Test2'))
+            response1_data = json.loads(response1.data)
+            assert len(response1_data['shared_decks']) == 1
+            response2 = self.app.post('/deck/share', data=json.dumps(
+                dict(userId='Test2', deckId=thisDeck)), 
+                content_type='application/json')
+            assert response2.status_code == 400
+            response3 = self.app.get('deck/share', query_string=dict(localId='Test2'))
+            response3_data = json.loads(response3.data)
+            assert len(response3_data['shared_decks']) == 1
+
+    def test_remove_not_shared_deck(self):
+        with self.app:
+            self.app.post('/deck/create', data=json.dumps(
+                dict(localId='Test', title='TestDeck', description='This is a test deck', visibility='public')), 
+                content_type='application/json')
+            response0 = self.app.get('deck/all', query_string=dict(localId='Test'))
+            response0_data = json.loads(response0.data)
+            thisDeck = ""
+            for d in response0_data["decks"]:
+                if d['title'] == 'TestDeck':
+                    thisDeck = d['id']
+            response1 = self.app.get('deck/share', query_string=dict(localId='Test2'))
+            response1_data = json.loads(response1.data)
+            assert len(response1_data['shared_decks']) == 0
+            response2 = self.app.patch("/deck/share/remove", data=json.dumps(
+                dict(userId='Test2', deckId=thisDeck)), 
+                content_type='application/json')
+            assert response2.status_code == 400
+            response3 = self.app.get('deck/share', query_string=dict(localId='Test2'))
+            response3_data = json.loads(response3.data)
+            assert len(response3_data['shared_decks']) == 0
+            
+    
 if __name__=="__main__":
     unittest.main()
