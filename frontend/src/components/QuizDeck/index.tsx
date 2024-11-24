@@ -14,14 +14,41 @@ export default function Quiz({ cards }: QuizProps) {
   const [isQuizFinished, setIsQuizFinished] = useState(false);
   const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
   const [incorrectAnswers, setIncorrectAnswers] = useState(0);
+  const [inputTime, setInputTime] = useState<string>(""); // Store the user input time
+  const [quizTime, setQuizTime] = useState<number | null>(null); // Timer for the entire quiz
+  const [timeLeft, setTimeLeft] = useState<number>(0); // Remaining time for the quiz
   const { id } = useParams();
   const currentCard = cards[currentCardIndex];
+
+  // Set quiz time and initialize the timer
+  const startQuiz = () => {
+    const totalTimeInSeconds = parseInt(inputTime, 10) * 60;
+    if (!isNaN(totalTimeInSeconds) && totalTimeInSeconds > 0) {
+      setQuizTime(totalTimeInSeconds);
+      setTimeLeft(totalTimeInSeconds);
+    } else {
+      alert("Please enter a valid time in minutes.");
+    }
+  };
 
   useEffect(() => {
     if (currentCard) {
       setShuffledOptions(shuffleOptions(cards, currentCard.back));
     }
   }, [currentCard, cards]);
+
+  useEffect(() => {
+    if (timeLeft <= 0 && quizTime) {
+      endQuiz(); // End quiz if time runs out
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prevTime) => prevTime - 1);
+    }, 1000);
+
+    return () => clearInterval(timer); // Clean up on component unmount or re-render
+  }, [timeLeft, quizTime]);
 
   function shuffleOptions(cards: QuizProps["cards"], correctAnswer: string) {
     const otherOptions = cards
@@ -36,8 +63,7 @@ export default function Quiz({ cards }: QuizProps) {
   const handleOptionClick = (option: string) => {
     setSelectedOption(option);
     const isCorrect = option === currentCard.back;
-    
-    // Update the score and incorrectAnswers based on the user's selection
+
     if (isCorrect) {
       setScore((prevScore) => prevScore + 1);
     } else {
@@ -46,34 +72,44 @@ export default function Quiz({ cards }: QuizProps) {
 
     setTimeout(() => {
       setSelectedOption(null);
-      if (currentCardIndex + 1 < cards.length) {
-        setCurrentCardIndex((prevIndex) => prevIndex + 1);
-      } else {
-        // Quiz is finished; call updateLeaderboard here
-        setIsQuizFinished(true);
-        updateLeaderboard(score + (isCorrect ? 1 : 0), incorrectAnswers + (isCorrect ? 0 : 1));
-      }
+      goToNextQuestion(isCorrect);
     }, 1000);
   };
 
-  // Update leaderboard function
+  const goToNextQuestion = (isCorrect: boolean) => {
+    if (currentCardIndex + 1 < cards.length) {
+      setCurrentCardIndex((prevIndex) => prevIndex + 1);
+    } else {
+      endQuiz();
+    }
+  };
+
+  const endQuiz = () => {
+    // Count unanswered questions as incorrect if the timer ran out
+    const unansweredQuestions = cards.length - (currentCardIndex + 1);
+    const finalIncorrectAnswers = incorrectAnswers + unansweredQuestions;
+    setIncorrectAnswers(finalIncorrectAnswers);
+    setIsQuizFinished(true);
+    updateLeaderboard(score, finalIncorrectAnswers);
+  };
+
   const updateLeaderboard = async (finalScore: number, finalIncorrectAnswers: number) => {
     const flashCardUser = window.localStorage.getItem("flashCardUser");
     const { localId = "", email = "" } = flashCardUser ? JSON.parse(flashCardUser) : {};
 
     if (localId && email) {
       try {
-        // Fetch the user's current score for this deck
         const response = await http.get(`/deck/${id}/user-score/${localId}`);
-        const existingScore = response.data?.score["correct"]; // Assuming the score is returned here
-        // Only update if the new score is higher than the existing score
-        if (finalScore > existingScore || (response.data.score["correct"] === 0 && response.data.score["incorrect"] === 0)) {
-          console.log("inside")
+        const existingScore = response.data?.score["correct"];
+        if (
+          finalScore > existingScore ||
+          (response.data.score["correct"] === 0 && response.data.score["incorrect"] === 0)
+        ) {
           await http.post(`/deck/${id}/update-leaderboard`, {
             userId: localId,
             userEmail: email,
-            correct: finalScore, // Pass the calculated final score
-            incorrect: finalIncorrectAnswers, // Pass the calculated final incorrect answers
+            correct: finalScore,
+            incorrect: finalIncorrectAnswers,
           });
         }
       } catch (error) {
@@ -87,6 +123,7 @@ export default function Quiz({ cards }: QuizProps) {
     setScore(0);
     setIsQuizFinished(false);
     setIncorrectAnswers(0);
+    setTimeLeft(quizTime || 0);
   };
 
   if (isQuizFinished) {
@@ -94,8 +131,26 @@ export default function Quiz({ cards }: QuizProps) {
       <div className="quiz-summary">
         <h2>Quiz Complete!</h2>
         <p>Your Score: {score} / {cards.length}</p>
+        <p>Incorrect Answers: {cards.length - score}</p>
         <button className="btn btn-primary" onClick={restartQuiz}>
           Restart Quiz
+        </button>
+      </div>
+    );
+  }
+
+  if (quizTime === null) {
+    return (
+      <div className="quiz-time-setup">
+        <h2>Set Quiz Time</h2>
+        <input
+          type="number"
+          placeholder="Enter time in minutes"
+          value={inputTime}
+          onChange={(e) => setInputTime(e.target.value)} // Update `inputTime` only
+        />
+        <button onClick={startQuiz} className="btn btn-primary">
+          Start Quiz
         </button>
       </div>
     );
@@ -128,6 +183,7 @@ export default function Quiz({ cards }: QuizProps) {
       <p>
         Question {currentCardIndex + 1} / {cards.length}
       </p>
+      <p>Time Left: {timeLeft} seconds</p>
     </div>
   );
 }
