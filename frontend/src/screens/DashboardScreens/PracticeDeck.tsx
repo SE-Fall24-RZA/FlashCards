@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import { Card, Modal, Button, Table } from "antd";
+import { Card, Modal, Button, Table, Popconfirm } from "antd";
 import Flashcard from "components/PracticeDeck";
 import Quiz from "components/QuizDeck"; // Importing the new Quiz component
 import { useEffect, useState } from "react";
@@ -122,6 +122,7 @@ const PracticeDeck = () => {
   const fetchSharedDecks =  async () => {
     try {
       const res = await http.get(`/deck/share`, { params: { localId: localId } })
+      setSharedWithUser(false)
       for(const d of res.data.shared_decks) {
         if(d.id == id) {
           setSharedWithUser(true)
@@ -139,6 +140,15 @@ const PracticeDeck = () => {
       Swal.fire("Deck Saved Successfully!", "", "success").then(() => fetchSharedDecks());
     } catch (error) {
       Swal.fire("Error Saving Deck", "", "error")
+    }
+  }
+
+  const unshareDeck = async () => {
+    try {
+      await http.patch(`deck/share/remove`, {userId: localId, deckId: id})
+      Swal.fire("Deck Removed Successfully!", "", "success").then(() => fetchSharedDecks());
+    } catch (error) {
+      Swal.fire("Error Removing Deck", "", "error")
     }
   }
 
@@ -181,6 +191,16 @@ const PracticeDeck = () => {
                     )}
                     {localId !== userId && !sharedWithUser && (
                       <button className="btn btn-white" onClick={() => shareDeck()}> Save to Dashboard</button>
+                    )}
+                    {localId !== userId && sharedWithUser && (
+                      <Popconfirm
+                        title="Are you sure to remove this deck?"
+                        onConfirm={() => unshareDeck()}
+                        okText="Yes"
+                        cancelText="No"
+                      >
+                        <button className="btn btn-danger"> Remove from shared decks </button>
+                      </Popconfirm>
                     )}
                     <button
                       className="btn btn-white"
