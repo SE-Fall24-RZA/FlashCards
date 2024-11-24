@@ -270,7 +270,7 @@ def get_user_score(deckId, userId):
 
 @deck_bp.route('/deck/share', methods=['POST'])
 @cross_origin(supports_credentials=True)
-def share_deck_with_user(deckId):
+def share_deck_with_user():
     try:
         data = request.get_json()
         userId = data['userId']
@@ -303,3 +303,20 @@ def get_shared_decks_with_user():
         return jsonify(shared_decks=shared_deck_list, message='Fetching shared_decks successful', status=200), 200
     except Exception as e:
         return jsonify(message=f'Fetching shared decks failed {e}', status=400), 400
+    
+@deck_bp.route('/deck/share/remove', methods=['PATCH'])
+@cross_origin(supports_credentials=True)
+def unshare_deck_with_user():
+    try:
+        data = request.get_json()
+        userId = data['userId']
+        deckId = data['deckId']
+        share_list = db.child("sharing").child(userId).get().val()
+        if share_list != None and deckId in share_list:
+            share_list.remove(deckId)
+            db.child("sharing").child(userId).set(share_list)
+            return jsonify(message='Deck removed successfully', status=200), 200
+        else:
+            raise Exception("Deck not shared with this user")
+    except Exception as e:
+        return jsonify(message=f'Deck share failed {e}', status=400), 400
