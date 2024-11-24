@@ -267,3 +267,22 @@ def get_user_score(deckId, userId):
 #             message=f"Failed to update last opened time: {e}",
 #             status=400
 #         ), 400
+
+@deck_bp.route('/deck/<deckId>/share', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def share_deck_with_user(deckId):
+    try:
+        data = request.get_json()
+        userId = data['userId']
+        share_list = db.child("sharing").child(userId).get().val()
+        if share_list != None and deckId not in share_list:
+            share_list.append(deckId)
+            db.child("sharing").child(userId).set(share_list)
+            return jsonify(message='Deck shared successfully', status=200), 200
+        elif share_list == None:
+            db.child("sharing").child(userId).set([deckId])
+            return jsonify(message='Deck shared successfully', status=200), 200
+        else:
+            raise Exception("Deck already shared with this user")
+    except Exception as e:
+        return jsonify(message=f'Deck share failed {e}', status=400), 400
