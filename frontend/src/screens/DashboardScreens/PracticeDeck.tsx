@@ -31,6 +31,7 @@ import { PropagateLoader } from "react-spinners";
 import EmptyImg from "assets/images/empty.svg";
 import http from "utils/api";
 import "./styles.scss";
+import Swal from "sweetalert2";
 
 interface Deck {
   id: string;
@@ -63,6 +64,7 @@ const PracticeDeck = () => {
   const [quizMode, setQuizMode] = useState(false);
   const [leaderboardVisible, setLeaderboardVisible] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [sharedWithUser, setSharedWithUser] = useState(false)
 
   const flashCardUser = window.localStorage.getItem("flashCardUser");
   const { localId } = (flashCardUser && JSON.parse(flashCardUser)) || {};
@@ -71,6 +73,7 @@ const PracticeDeck = () => {
   useEffect(() => {
     fetchDeck();
     fetchCards();
+    fetchSharedDecks();
   }, []);
 
   const fetchDeck = async () => {
@@ -116,6 +119,29 @@ const PracticeDeck = () => {
     setLeaderboardVisible(false);
   };
 
+  const fetchSharedDecks =  async () => {
+    try {
+      const res = await http.get(`/deck/share`, { params: { localId: localId } })
+      for(const d of res.data.shared_decks) {
+        if(d.id == id) {
+          setSharedWithUser(true)
+          break
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching shared decks:", error);
+    }
+  }
+
+  const shareDeck = async () => {
+    try {
+      await http.post(`deck/share`, {userId: localId, deckId: id})
+      Swal.fire("Deck Saved Successfully!", "", "success").then(() => fetchSharedDecks());
+    } catch (error) {
+      Swal.fire("Error Saving Deck", "", "error")
+    }
+  }
+
   const leaderboardColumns = [
     {
       title: "Rank", // New column for rank
@@ -152,6 +178,9 @@ const PracticeDeck = () => {
                       <Link to={`/deck/${id}/update`}>
                         <button className="btn btn-white">Update Deck</button>
                       </Link>
+                    )}
+                    {localId !== userId && !sharedWithUser && (
+                      <button className="btn btn-white" onClick={() => shareDeck()}> Save to Dashboard</button>
                     )}
                     <button
                       className="btn btn-white"
