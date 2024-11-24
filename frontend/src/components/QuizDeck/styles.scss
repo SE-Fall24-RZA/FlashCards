@@ -56,4 +56,29 @@
     background-color: #4caf50;
     color: white;
   }
+  .incorrect-questions {
+    margin-top: 20px;
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+
+      li {
+        background: #f9f9f9;
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+
+        p {
+          margin: 5px 0;
+        }
+
+        strong {
+          color: #333;
+        }
+      }
+    }
+  }
+
 }
