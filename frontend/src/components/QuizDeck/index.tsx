@@ -27,7 +27,7 @@ export default function Quiz({ cards }: QuizProps) {
   // Set quiz time and initialize the timer
   const startQuiz = () => {
     const totalTimeInSeconds = parseInt(inputTime, 10) * 60;
-    if (!isNaN(totalTimeInSeconds) && totalTimeInSeconds > 0) {
+    if (!isNaN(totalTimeInSeconds) && totalTimeInSeconds >= 0) {
       setQuizTime(totalTimeInSeconds);
       setTimeLeft(totalTimeInSeconds);
     } else {
