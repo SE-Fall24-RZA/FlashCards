@@ -327,7 +327,7 @@ const PracticeDeck = () => {
         {/* User Progress */}
         {userProgress.length > 0 ? (
           <div className='user-progress'>
-            <h4>Your previous tries</h4>
+            <h4>Your previous attempts</h4>
             <Table
               dataSource={userProgress}
               columns={[
