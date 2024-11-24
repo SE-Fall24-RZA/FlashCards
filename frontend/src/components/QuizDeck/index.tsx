@@ -174,7 +174,7 @@ if (isQuizFinished) {
         <h2>Set Quiz Time</h2>
         <input
           type="number"
-          placeholder="Enter time in minutes"
+          placeholder="Enter time in minutes (0 for Timer Not Required)"
           value={inputTime}
           onChange={(e) => setInputTime(e.target.value)} // Update `inputTime` only
         />
