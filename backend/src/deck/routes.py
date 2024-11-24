@@ -268,12 +268,13 @@ def get_user_score(deckId, userId):
 #             status=400
 #         ), 400
 
-@deck_bp.route('/deck/<deckId>/share', methods=['POST'])
+@deck_bp.route('/deck/share', methods=['POST'])
 @cross_origin(supports_credentials=True)
 def share_deck_with_user(deckId):
     try:
         data = request.get_json()
         userId = data['userId']
+        deckId = data['deckId']
         share_list = db.child("sharing").child(userId).get().val()
         if share_list != None and deckId not in share_list:
             share_list.append(deckId)
@@ -286,3 +287,19 @@ def share_deck_with_user(deckId):
             raise Exception("Deck already shared with this user")
     except Exception as e:
         return jsonify(message=f'Deck share failed {e}', status=400), 400
+    
+@deck_bp.route('/deck/share', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def get_shared_decks_with_user():
+    args = request.args
+    localId = args.get('localId')
+    try:
+        shared_deck_ids = db.child("sharing").child(localId).get().val()
+        shared_deck_list = []
+        if shared_deck_ids != None:
+            for deck_id in shared_deck_ids:
+                deck = db.child("deck").child(deck_id).get().val()
+                shared_deck_list.append(deck)
+        return jsonify(shared_decks=shared_deck_list, message='Fetching shared_decks successful', status=200), 200
+    except Exception as e:
+        return jsonify(message=f'Fetching shared decks failed {e}', status=400), 400
