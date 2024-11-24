@@ -306,38 +306,31 @@ def get_deck_analysis(deckId):
             "status": 400
         }), 400
     
-@deck_bp.route('/deck/<deckId>/user-progress/<userId>', methods=['GET'])
+@deck_bp.route('/deck/<deckId>/add-quiz-attempt', methods=['POST'])
 @cross_origin(supports_credentials=True)
-def get_user_progress(deckId, userId):
-    '''This endpoint fetches the user's progress over time for a specific deck.'''
+def add_quiz_attempt(deckId):
+    '''This endpoint adds a new quiz attempt to the quizAttempts node.'''
     try:
-        # Fetch the user's progress data for the specified deck
-        user_progress_entries = db.child("leaderboard").child(deckId).child(userId).get()
-        
-        if user_progress_entries.val() is None:
-            return jsonify({
-                "progress": [],
-                "message": "No progress data found for the user.",
-                "status": 404
-            }), 404
-        
-        progress_data = user_progress_entries.val()
-        progress_over_time = []
+        data = request.get_json()
+        user_id = data.get("userId")
+        user_email = data.get("userEmail")
+        correct = data.get("correct", 0)
+        incorrect = data.get("incorrect", 0)
+        last_attempt = data.get("lastAttempt", "")
 
-        # Assuming data entries have timestamps or dates
-        for date, entry in sorted(progress_data.items(), key=lambda x: x[0]):
-            correct = entry.get("correct", 0)
-            incorrect = entry.get("incorrect", 0)
-            progress_over_time.append({
-                "date": datetime.fromisoformat(date).strftime('%Y-%m-%d'),
-                "correct": correct,
-                "incorrect": incorrect,
-                "total_attempts": correct + incorrect,
-            })
+        # Sanitize lastAttempt to make it a valid Firebase path (replace invalid characters)
+        sanitized_last_attempt = last_attempt.replace(":", "-").replace(".", "-")
+
+        # Add the new quiz attempt to the quizAttempts node
+        db.child("quizAttempts").child(deckId).child(user_id).child(sanitized_last_attempt).set({
+            "userEmail": user_email,
+            "correct": correct,
+            "incorrect": incorrect,
+            "lastAttempt": last_attempt,
+        })
 
         return jsonify({
-            "progress": progress_over_time,
-            "message": "User progress fetched successfully",
+            "message": "Quiz attempt added successfully.",
             "status": 200
         }), 200
 
@@ -346,6 +339,66 @@ def get_user_progress(deckId, userId):
             "message": f"An error occurred: {e}",
             "status": 400
         }), 400
+
+@deck_bp.route('/deck/<deckId>/user-progress/<userId>', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def get_user_progress(deckId, userId):
+    '''This endpoint fetches the user's progress over time for a specific deck from quiz attempts.'''
+    try:
+        # Fetch all the quiz attempts for the specified deck and user
+        user_progress_entries = db.child("quizAttempts").child(deckId).child(userId).get()
+
+        if user_progress_entries.val() is None:
+            # If no quiz attempts found, return an empty progress list and a message
+            return jsonify({
+                "progress": [],
+                "message": "No progress data found for the user.",
+                "status": 404
+            }), 404
+
+        progress_data = user_progress_entries.val()
+        progress_over_time = []
+
+        # Iterate through all quiz attempts, which are nested under timestamp keys
+        for timestamp, attempt in progress_data.items():
+            # Extract and format the date from 'lastAttempt' (assuming it's in ISO format)
+            last_attempt = attempt.get("lastAttempt", "")
+            if last_attempt:
+                try:
+                    # Remove the 'Z' at the end of the timestamp (UTC indicator)
+                    last_attempt = last_attempt.rstrip('Z')
+                    # Convert the 'lastAttempt' timestamp to a date string (YYYY-MM-DD)
+                    formatted_date = datetime.fromisoformat(last_attempt).strftime('%Y-%m-%d')
+                except ValueError:
+                    # In case the date is not valid, set formatted_date to None
+                    formatted_date = None
+            else:
+                formatted_date = None
+
+            # Add each quiz attempt's data to the list
+            progress_over_time.append({
+                "userEmail": attempt.get("userEmail", ""),
+                "correct": attempt.get("correct", 0),
+                "incorrect": attempt.get("incorrect", 0),
+                "lastAttempt": last_attempt,
+                "date": formatted_date,  # Add the formatted date here
+                "total_attempts": attempt.get("correct", 0) + attempt.get("incorrect", 0),
+            })
+
+        # Return the structured response
+        return jsonify({
+            "progress": progress_over_time,
+            "message": "User progress fetched successfully",
+            "status": 200
+        }), 200
+
+    except Exception as e:
+        # Handle any exceptions that occur
+        return jsonify({
+            "message": f"An error occurred: {e}",
+            "status": 400
+        }), 400
+
 
 @deck_bp.route('/deck/<deckId>/performance-trends', methods=['GET'])
 @cross_origin(supports_credentials=True)

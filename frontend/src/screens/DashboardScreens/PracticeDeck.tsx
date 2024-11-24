@@ -75,6 +75,7 @@ const PracticeDeck = () => {
     []
   );
   const [analysisVisible, setAnalysisVisible] = useState(false);
+  const [userProgress, setUserProgress] = useState<any[]>([]); // For storing user progress
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
 
   const flashCardUser = window.localStorage.getItem("flashCardUser");
@@ -85,6 +86,13 @@ const PracticeDeck = () => {
     fetchDeck();
     fetchCards();
   }, []);
+
+  useEffect(() => {
+    if (analysisVisible) {
+      fetchAnalysis();
+      fetchUserProgress();
+    }
+  }, [analysisVisible]);
 
   const fetchDeck = async () => {
     setFetchingDeck(true);
@@ -147,6 +155,19 @@ const PracticeDeck = () => {
       });
     } catch (error) {
       console.error("Error fetching analysis:", error);
+    }
+  };
+
+  const fetchUserProgress = async () => {
+    try {
+      const res = await http.get(`/deck/${id}/user-progress/${localId}`);
+      if (res.data.progress) {
+        setUserProgress(res.data.progress);
+      } else {
+        console.log(res.data.message); // If no progress found
+      }
+    } catch (error) {
+      console.error("Error fetching user progress:", error);
     }
   };
 
@@ -276,7 +297,7 @@ const PracticeDeck = () => {
 
       {/* Analysis Modal */}
       <Modal
-        title='Deck Analysis'
+        title='Analysis Summary'
         open={analysisVisible}
         onCancel={closeAnalysis}
         footer={[
@@ -288,29 +309,50 @@ const PracticeDeck = () => {
         style={{ maxHeight: "80vh", overflowY: "auto" }}
         bodyStyle={{ padding: "20px" }}
       >
+        {/* Deck Analysis */}
         {analysisData ? (
           <div>
-            <h4>Analysis Summary</h4>
-            <p>
-              <b>Total Attempts:</b> {analysisData.totalAttempts}
-            </p>
-            <p>
-              <b>Total Correct:</b> {analysisData.totalCorrect}
-            </p>
-            <p>
-              <b>Total Incorrect:</b> {analysisData.totalIncorrect}
-            </p>
-            <p>
-              <b>Average Correct Answers per Session:</b>{" "}
-              {analysisData.averageCorrect}
-            </p>
-            <p>
-              <b>Average Incorrect Answers per Session:</b>{" "}
-              {analysisData.averageIncorrect}
-            </p>
+            <h4>Leaderboard Analysis</h4>
+            <p>Total Attempts: {analysisData.totalAttempts}</p>
+            <p>Total Correct: {analysisData.totalCorrect}</p>
+            <p>Total Incorrect: {analysisData.totalIncorrect}</p>
+            <p>Average Attempts: {analysisData.averageAttempts}</p>
+            <p>Average Correct: {analysisData.averageCorrect}</p>
+            <p>Average Incorrect: {analysisData.averageIncorrect}</p>
           </div>
         ) : (
-          <p>No analysis data available</p>
+          <p>Loading deck analysis...</p>
+        )}
+
+        {/* User Progress */}
+        {userProgress.length > 0 ? (
+          <div className='user-progress'>
+            <h4>Your previous tries</h4>
+            <Table
+              dataSource={userProgress}
+              columns={[
+                {
+                  title: "Date",
+                  dataIndex: "date",
+                  key: "date",
+                },
+                {
+                  title: "Correct Answers",
+                  dataIndex: "correct",
+                  key: "correct",
+                },
+                {
+                  title: "Incorrect Answers",
+                  dataIndex: "incorrect",
+                  key: "incorrect",
+                },
+              ]}
+              rowKey='date'
+              pagination={false}
+            />
+          </div>
+        ) : (
+          <p>No progress data available</p>
         )}
       </Modal>
     </div>

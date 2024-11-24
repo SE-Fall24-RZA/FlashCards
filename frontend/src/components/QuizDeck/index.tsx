@@ -36,7 +36,7 @@ export default function Quiz({ cards }: QuizProps) {
   const handleOptionClick = (option: string) => {
     setSelectedOption(option);
     const isCorrect = option === currentCard.back;
-    
+
     // Update the score and incorrectAnswers based on the user's selection
     if (isCorrect) {
       setScore((prevScore) => prevScore + 1);
@@ -51,15 +51,23 @@ export default function Quiz({ cards }: QuizProps) {
       } else {
         // Quiz is finished; call updateLeaderboard here
         setIsQuizFinished(true);
-        updateLeaderboard(score + (isCorrect ? 1 : 0), incorrectAnswers + (isCorrect ? 0 : 1));
+        updateLeaderboard(
+          score + (isCorrect ? 1 : 0),
+          incorrectAnswers + (isCorrect ? 0 : 1)
+        );
       }
     }, 1000);
   };
 
   // Update leaderboard function
-  const updateLeaderboard = async (finalScore: number, finalIncorrectAnswers: number) => {
+  const updateLeaderboard = async (
+    finalScore: number,
+    finalIncorrectAnswers: number
+  ) => {
     const flashCardUser = window.localStorage.getItem("flashCardUser");
-    const { localId = "", email = "" } = flashCardUser ? JSON.parse(flashCardUser) : {};
+    const { localId = "", email = "" } = flashCardUser
+      ? JSON.parse(flashCardUser)
+      : {};
 
     if (localId && email) {
       try {
@@ -67,8 +75,12 @@ export default function Quiz({ cards }: QuizProps) {
         const response = await http.get(`/deck/${id}/user-score/${localId}`);
         const existingScore = response.data?.score["correct"]; // Assuming the score is returned here
         // Only update if the new score is higher than the existing score
-        if (finalScore > existingScore || (response.data.score["correct"] === 0 && response.data.score["incorrect"] === 0)) {
-          console.log("inside")
+        if (
+          finalScore > existingScore ||
+          (response.data.score["correct"] === 0 &&
+            response.data.score["incorrect"] === 0)
+        ) {
+          console.log("inside");
           await http.post(`/deck/${id}/update-leaderboard`, {
             userId: localId,
             userEmail: email,
@@ -76,6 +88,18 @@ export default function Quiz({ cards }: QuizProps) {
             incorrect: finalIncorrectAnswers, // Pass the calculated final incorrect answers
           });
         }
+
+        // Create a unique attempt ID, you can use a timestamp or generate one
+        const attemptId = new Date().toISOString();
+
+        // Store the attempt in the quizAttempts collection
+        await http.post(`/deck/${id}/add-quiz-attempt`, {
+          userId: localId,
+          userEmail: email,
+          correct: finalScore, // Pass the final correct answers
+          incorrect: finalIncorrectAnswers, // Pass the final incorrect answers
+          lastAttempt: attemptId, // You can use the attempt ID or timestamp here
+        });
       } catch (error) {
         console.error("Error updating leaderboard:", error);
       }
@@ -91,10 +115,12 @@ export default function Quiz({ cards }: QuizProps) {
 
   if (isQuizFinished) {
     return (
-      <div className="quiz-summary">
+      <div className='quiz-summary'>
         <h2>Quiz Complete!</h2>
-        <p>Your Score: {score} / {cards.length}</p>
-        <button className="btn btn-primary" onClick={restartQuiz}>
+        <p>
+          Your Score: {score} / {cards.length}
+        </p>
+        <button className='btn btn-primary' onClick={restartQuiz}>
           Restart Quiz
         </button>
       </div>
@@ -102,9 +128,9 @@ export default function Quiz({ cards }: QuizProps) {
   }
 
   return (
-    <div className="quiz-container">
+    <div className='quiz-container'>
       <h2>{currentCard.front}</h2>
-      <div className="options">
+      <div className='options'>
         {shuffledOptions.map((option, index) => (
           <button
             key={index}
