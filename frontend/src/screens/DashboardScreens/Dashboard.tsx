@@ -43,17 +43,21 @@ const Dashboard = () => {
   const [isFolderPopupVisible, setIsFolderPopupVisible] = useState(false);
   const [selectedFolderDecks, setSelectedFolderDecks] = useState<Deck[]>([]);
   const [groups, setGroups] = useState<Group[]>([])
+  const [sharedDecks, setSharedDecks] = useState<Deck[]>([])
 
 // Refs for sliders
   const sliderRefLibrary = useRef<HTMLDivElement>(null);
   const sliderRefRecent = useRef<HTMLDivElement>(null);
   const sliderRefGroup = useRef<HTMLDivElement>(null);
+  const sliderRefShared = useRef<HTMLDivElement>(null);
   const [canScrollLeftLib, setCanScrollLeftLib] = useState(false);
   const [canScrollRightLib, setCanScrollRightLib] = useState(false);
   const [canScrollLeftRec, setCanScrollLeftRec] = useState(false);
   const [canScrollRightRec, setCanScrollRightRec] = useState(false);
   const [canScrollLeftGroup, setCanScrollLeftGroup] = useState(false);
-  const [canScrollRightGroup, setCanScrollRightGroup] = useState(false);  
+  const [canScrollRightGroup, setCanScrollRightGroup] = useState(false);
+  const [canScrollLeftShare, setCanScrollLeftShare] = useState(false);
+  const [canScrollRightShare, setCanScrollRightShare] = useState(false);  
   
   const flashCardUser = window.localStorage.getItem("flashCardUser");
   const { localId } = (flashCardUser && JSON.parse(flashCardUser)) || {};
@@ -64,15 +68,18 @@ const Dashboard = () => {
     fetchDecks();
     fetchFolders();
     fetchGroups();
+    fetchSharedDecks();
   }, []);
 
   useEffect(() => {
     updateArrowsVisibilityLibrary();
     updateArrowsVisibilityRecent();
     updateArrowsVisibilityGroups();
+    updateArrowsVisibilityShared()
     const sliderLib = sliderRefLibrary.current;
     const sliderRec = sliderRefRecent.current;
     const sliderGroup = sliderRefGroup.current;
+    const sliderShared = sliderRefShared.current
 
     if (sliderLib) {
       sliderLib.addEventListener("scroll", updateArrowsVisibilityLibrary);
@@ -86,7 +93,11 @@ const Dashboard = () => {
       sliderGroup.addEventListener("scroll", updateArrowsVisibilityGroups);
       //return () => sliderGroup.removeEventListener("scroll", updateArrowsVisibilityGroups);
     }
-  }, [decks, groups]);
+    if (sliderShared){
+      sliderShared.addEventListener("scroll", updateArrowsVisibilityShared);
+      //return () => sliderGroup.removeEventListener("scroll", updateArrowsVisibilityGroups);
+    }
+  }, [decks, groups, sharedDecks]);
 
   const fetchDecks = async () => {
     setFetchingDecks(true);
@@ -124,6 +135,14 @@ const Dashboard = () => {
     try {
       const res = await http.get("/group/all", { params: { localId: localId } });
       setGroups(res.data?.groups || []);
+    } catch (err) {
+      console.error("Error fetching folders:", err);
+    }
+  }
+  const fetchSharedDecks = async () => {
+    try {
+      const res = await http.get("/deck/share", { params: { localId: localId } });
+      setSharedDecks(res.data?.shared_decks || []);
     } catch (err) {
       console.error("Error fetching folders:", err);
     }
@@ -169,6 +188,16 @@ const Dashboard = () => {
     }
   };
 
+  const handleRemoveSharedDeck = async(deckId: string) => {
+    try {
+      await http.patch(`/deck/share/remove`, { userId: localId, deckId: deckId });
+      fetchSharedDecks()
+      Swal.fire("You have removed the shared deck", "", "success");
+    } catch (err) {
+      Swal.fire("Failed to remove shared deck", "", "error");
+    }
+  }
+
   // Update arrows visibility based on scroll position
   const updateArrowsVisibilityLibrary = () => {
     if (sliderRefLibrary.current) {
@@ -194,6 +223,14 @@ const Dashboard = () => {
     }
   };
 
+  const updateArrowsVisibilityShared = () => {
+    if (sliderRefShared.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = sliderRefShared.current;
+      setCanScrollLeftShare(scrollLeft > 0);
+      setCanScrollRightShare(scrollLeft + clientWidth < scrollWidth - 1);
+    }
+  };
+
   const scrollLibrary = (direction: "left" | "right") => {
     if (sliderRefLibrary.current) {
       const scrollAmount = direction === "left" ? -300 : 300;
@@ -212,6 +249,13 @@ const Dashboard = () => {
     if (sliderRefGroup.current) {
       const scrollAmount = direction === "left" ? -300 : 300;
       sliderRefGroup.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  const scrollShared = (direction: "left" | "right") => {
+    if (sliderRefShared.current) {
+      const scrollAmount = direction === "left" ? -300 : 300;
+      sliderRefShared.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
     }
   };
 
@@ -378,6 +422,55 @@ const Dashboard = () => {
               </div>
             )}
         </div>
+
+        {/* Shared Decks Section */}
+        {sharedDecks.length > 0 && (<div className="row mt-4">
+            <div className="col-md-12">
+              <p className="title">Shared With You</p>
+            </div>
+            {sharedDecks.length === 0 ? (
+              <div className="row justify-content-center">
+                <p>No Shared Decks</p>
+              </div>
+            ) : (
+              <div className="slider-container">
+                {canScrollLeftShare && (
+                  <button className="arrow left" onClick={() => scrollShared("left")}>
+                    <LeftOutlined />
+                  </button>
+                )}
+                <div className="deck-slider" ref={sliderRefShared}>
+                  {sharedDecks.map((deck) => (
+                    <div className="deck-card" key={deck.id}>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <Link to={`/deck/${deck.id}/practice`}>
+                          <h5>{deck.title}</h5>
+                        </Link>
+                      </div>
+                      <p className="description">{deck.description}</p>
+                      <p className="items-count">{deck.cards_count} item(s)</p>
+                      <div className="menu">
+                        <Link to={`/deck/${deck.id}/practice`}><button className="btn text-left"><i className="lni lni-book"></i>Practice</button></Link>
+                        <Popconfirm
+                          title={`Are you sure you want to remove this deck "${deck.title}"?`}
+                          onConfirm={() => handleRemoveSharedDeck(deck.id)}
+                          okText="Yes"
+                          cancelText="No"
+                        >
+                            <button className="btn text-danger"><i className="lni lni-trash-can"></i> Remove</button>
+                        </Popconfirm>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {canScrollRightShare && (
+                  <button className="arrow right" onClick={() => scrollShared("right")}>
+                    <RightOutlined />
+                  </button>
+                )}
+              </div>
+            )}
+        </div>)}
 
         {/* Groups Section */}
         <div className="row mt-4">
