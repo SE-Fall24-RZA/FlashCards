@@ -19,6 +19,10 @@ export default function Quiz({ cards }: QuizProps) {
   const [timeLeft, setTimeLeft] = useState<number>(0); // Remaining time for the quiz
   const { id } = useParams();
   const currentCard = cards[currentCardIndex];
+  const [incorrectQuestions, setIncorrectQuestions] = useState<
+  { question: string; correctAnswer: string; userAnswer: string | null }[]
+>([]);
+
 
   // Set quiz time and initialize the timer
   const startQuiz = () => {
@@ -68,6 +72,14 @@ export default function Quiz({ cards }: QuizProps) {
       setScore((prevScore) => prevScore + 1);
     } else {
       setIncorrectAnswers((prevIncorrect) => prevIncorrect + 1);
+      setIncorrectQuestions((prevIncorrectQuestions) => [
+        ...prevIncorrectQuestions,
+        {
+          question: currentCard.front,
+          correctAnswer: currentCard.back,
+          userAnswer: option,
+        },
+      ]);
     }
 
     setTimeout(() => {
@@ -126,18 +138,35 @@ export default function Quiz({ cards }: QuizProps) {
     setTimeLeft(quizTime || 0);
   };
 
-  if (isQuizFinished) {
-    return (
-      <div className="quiz-summary">
-        <h2>Quiz Complete!</h2>
-        <p>Your Score: {score} / {cards.length}</p>
-        <p>Incorrect Answers: {cards.length - score}</p>
-        <button className="btn btn-primary" onClick={restartQuiz}>
-          Restart Quiz
-        </button>
+if (isQuizFinished) {
+  return (
+    <div className="quiz-summary">
+      <h2>Quiz Complete!</h2>
+      <p>Your Score: {score} / {cards.length}</p>
+      <p>Incorrect Answers: {cards.length - score}</p>
+      <button className="btn btn-primary" onClick={restartQuiz}>
+        Restart Quiz
+      </button>
+      <div className="incorrect-questions">
+        <h3>Questions You Got Wrong:</h3>
+        {incorrectQuestions.length > 0 ? (
+          <ul>
+            {incorrectQuestions.map((question, index) => (
+              <li key={index}>
+                <p><strong>Question:</strong> {question.question}</p>
+                <p><strong>Your Answer:</strong> {question.userAnswer}</p>
+                <p><strong>Correct Answer:</strong> {question.correctAnswer}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>Great job! You got all questions correct!</p>
+        )}
       </div>
-    );
-  }
+    </div>
+  );
+}
+
 
   if (quizTime === null) {
     return (
