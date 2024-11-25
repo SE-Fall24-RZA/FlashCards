@@ -2,7 +2,7 @@ from flask import Flask
 import sys
 sys.path.append('backend/src')
 import unittest
-from unittest.mock import patch, MagicMock, ANY
+from unittest.mock import patch, MagicMock, ANY, Mock
 import json
 from src.auth.routes import auth_bp
 from src.deck.routes import deck_bp
@@ -474,6 +474,51 @@ class TestDeck(unittest.TestCase):
             response3 = self.app.get('deck/share', query_string=dict(localId='Test2'))
             response3_data = json.loads(response3.data)
             assert len(response3_data['shared_decks']) == 0
+
+    @patch('src.deck.routes.db')
+    def test_get_deck_analysis_success(self, mock_db):
+        '''Test successful fetching of deck analysis'''
+        # Mock the database response
+        mock_entry_1 = Mock()
+        mock_entry_1.val.return_value = {"correct": 5, "incorrect": 2}
+        mock_entry_2 = Mock()
+        mock_entry_2.val.return_value = {"correct": 3, "incorrect": 1}
+        mock_db.child.return_value.child.return_value.get.return_value.each.return_value = [mock_entry_1, mock_entry_2]
+
+        response = self.app.get('/deck/some_deck_id/analysis')
+        assert response.status_code == 200
+
+        response_data = json.loads(response.data)
+        assert response_data['message'] == "Analysis data fetched successfully"
+        analysis = response_data['analysis']
+        assert analysis['total_correct'] == 8
+        assert analysis['total_incorrect'] == 3
+        assert analysis['total_attempts'] == 11
+        assert analysis['average_correct'] == 4
+        assert analysis['average_incorrect'] == 1.5
+        assert analysis['average_attempts'] == 5.5
+
+    @patch('src.deck.routes.db')
+    def test_get_deck_analysis_no_data(self, mock_db):
+        '''Test fetching deck analysis with no data'''
+        mock_db.child.return_value.child.return_value.get.return_value.each.return_value = []
+
+        response = self.app.get('/deck/some_deck_id/analysis')
+        assert response.status_code == 404
+
+        response_data = json.loads(response.data)
+        assert response_data['message'] == "No data available for analysis."
+
+    @patch('src.deck.routes.db')
+    def test_get_deck_analysis_error(self, mock_db):
+        '''Test error during deck analysis fetching'''
+        mock_db.child.return_value.child.return_value.get.side_effect = Exception("Database error")
+
+        response = self.app.get('/deck/some_deck_id/analysis')
+        assert response.status_code == 400
+
+        response_data = json.loads(response.data)
+        assert "An error occurred" in response_data['message']
             
     
 if __name__=="__main__":
