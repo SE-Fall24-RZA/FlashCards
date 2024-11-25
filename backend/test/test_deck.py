@@ -572,6 +572,70 @@ class TestDeck(unittest.TestCase):
 
         response_data = json.loads(response.data)
         assert "An error occurred" in response_data['message']
+
+    @patch('src.deck.routes.db')
+    def test_get_user_progress_success(self, mock_db):
+        '''Test fetching user progress successfully.'''
+        # Arrange
+        mock_data = {
+            "2023-11-20T15:30:00Z": {
+                "userEmail": "test@example.com",
+                "correct": 5,
+                "incorrect": 2,
+                "lastAttempt": "2023-11-20T15:30:00Z"
+            },
+            "2023-11-21T16:45:00Z": {
+                "userEmail": "test@example.com",
+                "correct": 7,
+                "incorrect": 1,
+                "lastAttempt": "2023-11-21T16:45:00Z"
+            }
+        }
+        mock_db.child.return_value.child.return_value.child.return_value.get.return_value.val.return_value = mock_data
+
+        # Act
+        response = self.app.get('/deck/test-deck/user-progress/test-user', content_type='application/json')
+
+        # Assert
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data['status'] == 200
+        assert len(response_data['progress']) == 2
+        assert response_data['progress'][0]['correct'] == 5
+        assert response_data['progress'][0]['date'] == "2023-11-20"
+        assert response_data['progress'][1]['correct'] == 7
+        assert response_data['progress'][1]['date'] == "2023-11-21"
+
+    @patch('src.deck.routes.db')
+    def test_get_user_progress_no_data(self, mock_db):
+        '''Test fetching user progress when no data exists.'''
+        # Arrange
+        mock_db.child.return_value.child.return_value.child.return_value.get.return_value.val.return_value = None
+
+        # Act
+        response = self.app.get('/deck/test-deck/user-progress/test-user', content_type='application/json')
+
+        # Assert
+        assert response.status_code == 404
+        response_data = json.loads(response.data)
+        assert response_data['status'] == 404
+        assert response_data['progress'] == []
+        assert response_data['message'] == "No progress data found for the user."
+
+    @patch('src.deck.routes.db')
+    def test_get_user_progress_error(self, mock_db):
+        '''Test fetching user progress with an internal error.'''
+        # Arrange
+        mock_db.child.return_value.child.return_value.child.return_value.get.side_effect = Exception("Database error")
+
+        # Act
+        response = self.app.get('/deck/test-deck/user-progress/test-user', content_type='application/json')
+
+        # Assert
+        assert response.status_code == 400
+        response_data = json.loads(response.data)
+        assert response_data['status'] == 400
+        assert "An error occurred" in response_data['message']
             
     
 if __name__=="__main__":
