@@ -165,12 +165,22 @@ def deletefolder(id):
 @folder_bp.route('/deck/add-deck', methods=['POST'])
 @cross_origin(supports_credentials=True)
 def adddecktofolder():
-    '''This method allows the user to add a deck to a folder by folderId and deckId.'''
+    '''This method allows the user to add a deck to a folder by folderId and deckId. Ensures each deck is added to a folder only once.'''
     try:
         data = request.get_json()
         folder_id = data['folderId']
         deck_id = data['deckId']
 
+        # Check if the deck is already in the folder
+        existing_entries = db.child("folder_deck").order_by_child("folderId").equal_to(folder_id).get()
+        for entry in existing_entries.each():
+            if entry.val().get("deckId") == deck_id:
+                return jsonify(
+                    message='Deck already exists in the folder',
+                    status=409  # HTTP status code for conflict
+                ), 409
+
+        # If not, add the deck to the folder
         db.child("folder_deck").push({
             "folderId": folder_id,
             "deckId": deck_id
@@ -180,11 +190,13 @@ def adddecktofolder():
             message='Deck added to folder successfully',
             status=201
         ), 201
+
     except Exception as e:
         return jsonify(
             message=f"Failed to add deck to folder: {e}",
             status=400
         ), 400
+
 
 
 @folder_bp.route('/folder/remove-deck', methods=['DELETE'])
