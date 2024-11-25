@@ -368,9 +368,11 @@ const GroupDashboard = () => {
                                                         {msg.timestamp}
                                                     </p>
                                                 </div>
-                                                <p>
-                                                    {msg.message}
-                                                </p>
+                                                <div className="chat-message">
+                                                    <p >
+                                                        {msg.message}
+                                                    </p>
+                                                </div>
                                                 
                                             </div>)
                                         })}

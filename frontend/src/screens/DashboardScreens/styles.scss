@@ -146,6 +146,13 @@
                 font-size: small;
                 color: #AAA;
             }
+            .chat-message {
+                width: 100%;
+                word-wrap: break-word;
+            }
+        }
+        .group-chat-message:hover {
+            background-color: #EEE;
         }
         // .text-post {
         //     width: 100%
