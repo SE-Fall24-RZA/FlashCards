@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./styles.scss";
 import http from "utils/api"; // Assuming `http` is the instance for API requests
 import { useParams } from "react-router";
+import Swal from "sweetalert2";
 
 interface QuizProps {
   cards: { front: string; back: string; hint: string }[];
@@ -30,7 +31,13 @@ export default function Quiz({ cards }: QuizProps) {
       setQuizTime(totalTimeInSeconds);
       setTimeLeft(totalTimeInSeconds);
     } else {
-      alert("Please enter a valid time in minutes.");
+      Swal.fire({
+        title: "Invalid Time",
+        text: "Please enter a valid time in minutes.",
+        icon: "error", // Shows error icon
+        confirmButtonText: "OK", // Button text
+        confirmButtonColor: "#221daf", // Button color
+      });
     }
   };
 
