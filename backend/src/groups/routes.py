@@ -256,3 +256,45 @@ def getGroupMessages(id):
             return jsonify(chat=[], message='No messages found', status=200), 200
     except Exception as e:
         return jsonify(message=f'Message retrieval failed {e}', status=400), 400
+    
+@group_bp.route('/group/<id>/notifications', methods=['PUT'])
+@cross_origin(supports_credentials=True)
+def setGroupNotifications(id):
+    '''Sets notifications for all members of a group'''
+    try:
+        data = request.get_json()
+        members = data['members']
+        db.child("notifications").child(id).set(members)
+        return jsonify(message='Notifications updated succesfully', status=200), 200
+    except Exception as e:
+        return jsonify(message=f'Notifications update failed {e}', status=400), 400
+    
+@group_bp.route('/group/<id>/notifications', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def getGroupNotifications(id):
+    '''Retrieves all notifications for a given group'''
+    try:
+        notifications = db.child("notifications").child(id).get().val()
+        if notifications != None:
+            return jsonify(notifications=notifications, message='Notifications returned successfully', status=200), 200
+        else:
+            return jsonify(notifications=[], message='No notifications found', status=200), 200
+    except Exception as e:
+        return jsonify(message=f'Notification retrieval failed {e}', status=400), 400
+    
+@group_bp.route('/group/<id>/notifications/clear', methods=['PUT'])
+@cross_origin(supports_credentials=True)
+def clearGroupNotification(id):
+    '''Retrieves all notifications for a given group'''
+    try:
+        data = request.get_json()
+        user = data['user']
+        notifications = db.child("notifications").child(id).get().val()
+        if notifications != None and user in notifications:
+            notifications.remove(user)
+            db.child("notifications").child(id).set(notifications)
+            return jsonify(message='Notifications updated successfully', status=200), 200
+        else:
+            return jsonify(message='No notifications to change', status=200), 200
+    except Exception as e:
+        return jsonify(message=f'Notification update failed {e}', status=400), 400
