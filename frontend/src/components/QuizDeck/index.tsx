@@ -109,7 +109,7 @@ export default function Quiz({ cards }: QuizProps) {
     const finalIncorrectAnswers = incorrectAnswers + unansweredQuestions;
     setIncorrectAnswers(finalIncorrectAnswers);
     setIsQuizFinished(true);
-    updateLeaderboard(score, finalIncorrectAnswers);
+    updateLeaderboard(score, cards.length - score);
     console.log(score);
   };
 
