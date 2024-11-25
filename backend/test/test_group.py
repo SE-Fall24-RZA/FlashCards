@@ -362,10 +362,154 @@ class TestDeck(unittest.TestCase):
             response1 = self.app.delete('/group/NotRealGroup')
             assert response1.status_code == 400
             response2 = self.app.get('/group/NotRealGroup')
-            print(json.loads(response2.data))
             assert response2.status_code == 404
 
     def test_get_missing_user_id(self):
         with self.app:
             response = self.app.get('/group/all')
             assert response.status_code == 400
+
+    def test_create_group_message(self):
+        with self.app:
+            self.app.post('/group/create', data=json.dumps(
+                dict(localId='TestUser', email='TestEmail@email.com', group_name='TestGroup8', description='Testing Group 8')), 
+                content_type='application/json')
+            response0=self.app.get('/group/all',query_string=dict(localId='TestUser'))
+            response0_data = json.loads(response0.data)
+            thisGroup = ""
+            for grp in response0_data["groups"]:
+                if grp["group_name"] == "TestGroup8":
+                    thisGroup = grp["id"]
+                    break
+            response1 = self.app.post('/group/' + thisGroup + "/messages", data=json.dumps(
+                dict(email='TestEmail@email.com', message="Test Message")), 
+                content_type='application/json')
+            assert response1.status_code == 200
+            response2 = self.app.get('/group/' + thisGroup + "/messages")
+            response2_data = json.loads(response2.data)
+            assert len(response2_data["chat"]) == 1
+            assert response2_data["chat"][0]["message"] == "Test Message"
+
+    def test_create_invalid_group_message(self):
+        with self.app:
+            self.app.post('/group/create', data=json.dumps(
+                dict(localId='TestUser', email='TestEmail@email.com', group_name='TestGroupError', description='Testing Group Error')), 
+                content_type='application/json')
+            response0=self.app.get('/group/all',query_string=dict(localId='TestUser'))
+            response0_data = json.loads(response0.data)
+            thisGroup = ""
+            for grp in response0_data["groups"]:
+                if grp["group_name"] == "TestGroupError":
+                    thisGroup = grp["id"]
+                    break
+            response1 = self.app.post('/group/' + thisGroup + "/messages", data=json.dumps(
+                dict(email='TestEmail@email.com')), 
+                content_type='application/json')
+            assert response1.status_code == 400
+            response2 = self.app.get('/group/' + thisGroup + "/messages")
+            response2_data = json.loads(response2.data)
+            assert len(response2_data["chat"]) == 0
+
+    def test_set_group_notifications(self):
+        with self.app:
+            self.app.post('/group/create', data=json.dumps(
+                dict(localId='TestUser', email='TestEmail@email.com', group_name='TestGroup9', description='Testing Group 9')), 
+                content_type='application/json')
+            response0=self.app.get('/group/all',query_string=dict(localId='TestUser'))
+            response0_data = json.loads(response0.data)
+            thisGroup = ""
+            for grp in response0_data["groups"]:
+                if grp["group_name"] == "TestGroup9":
+                    thisGroup = grp["id"]
+                    break
+            response1 = self.app.put('/group/' + thisGroup + "/notifications", data=json.dumps(
+                dict(members=[dict(userId='TestUser', email='TestEmail@email.com')])), 
+                content_type='application/json')
+            assert response1.status_code == 200
+            response2 = self.app.get('/group/' + thisGroup + "/notifications")
+            response2_data = json.loads(response2.data)
+            assert len(response2_data["notifications"]) == 1
+            assert response2_data["notifications"][0]["userId"] == "TestUser"
+
+    def test_clear_group_notifications(self):
+        with self.app:
+            self.app.post('/group/create', data=json.dumps(
+                dict(localId='TestUser', email='TestEmail@email.com', group_name='TestGroup10', description='Testing Group 10')), 
+                content_type='application/json')
+            response0=self.app.get('/group/all',query_string=dict(localId='TestUser'))
+            response0_data = json.loads(response0.data)
+            thisGroup = ""
+            for grp in response0_data["groups"]:
+                if grp["group_name"] == "TestGroup10":
+                    thisGroup = grp["id"]
+                    break
+            self.app.put('/group/' + thisGroup + "/notifications", data=json.dumps(
+                dict(members=[dict(userId='TestUser', email='TestEmail@email.com')])), 
+                content_type='application/json')
+            response1 = self.app.put('/group/' + thisGroup + "/notifications/clear", data=json.dumps(
+                dict(user=dict(userId='TestUser', email='TestEmail@email.com'))), 
+                content_type='application/json')
+            assert response1.status_code == 200
+            response2 = self.app.get('/group/' + thisGroup + "/notifications")
+            response2_data = json.loads(response2.data)
+            assert len(response2_data["notifications"]) == 0
+
+    def test_clear_nonexistant_group_notifications(self):
+        with self.app:
+            self.app.post('/group/create', data=json.dumps(
+                dict(localId='TestUser', email='TestEmail@email.com', group_name='TestGroup11', description='Testing Group 11')), 
+                content_type='application/json')
+            response0=self.app.get('/group/all',query_string=dict(localId='TestUser'))
+            response0_data = json.loads(response0.data)
+            thisGroup = ""
+            for grp in response0_data["groups"]:
+                if grp["group_name"] == "TestGroup11":
+                    thisGroup = grp["id"]
+                    break
+            response1 = self.app.put('/group/' + thisGroup + "/notifications/clear", data=json.dumps(
+                dict(user='TestUser')), 
+                content_type='application/json')
+            assert response1.status_code == 200
+            response2 = self.app.get('/group/' + thisGroup + "/notifications")
+            response2_data = json.loads(response2.data)
+            assert len(response2_data["notifications"]) == 0
+
+    def test_set_group_notifications_invalid(self):
+        with self.app:
+            self.app.post('/group/create', data=json.dumps(
+                dict(localId='TestUser', email='TestEmail@email.com', group_name='TestGroupError', description='Testing Group Error')), 
+                content_type='application/json')
+            response0=self.app.get('/group/all',query_string=dict(localId='TestUser'))
+            response0_data = json.loads(response0.data)
+            thisGroup = ""
+            for grp in response0_data["groups"]:
+                if grp["group_name"] == "TestGroupError":
+                    thisGroup = grp["id"]
+                    break
+            response1 = self.app.put('/group/' + thisGroup + "/notifications", data=json.dumps(
+                dict(input="wrong fields")), 
+                content_type='application/json')
+            assert response1.status_code == 400
+            response2 = self.app.get('/group/' + thisGroup + "/notifications")
+            response2_data = json.loads(response2.data)
+            assert len(response2_data["notifications"]) == 0
+
+    def test_clear_group_notifications_invalid(self):
+        with self.app:
+            self.app.post('/group/create', data=json.dumps(
+                dict(localId='TestUser', email='TestEmail@email.com', group_name='TestGroupError', description='Testing Group Error')), 
+                content_type='application/json')
+            response0=self.app.get('/group/all',query_string=dict(localId='TestUser'))
+            response0_data = json.loads(response0.data)
+            thisGroup = ""
+            for grp in response0_data["groups"]:
+                if grp["group_name"] == "TestGroupError":
+                    thisGroup = grp["id"]
+                    break
+            response1 = self.app.put('/group/' + thisGroup + "/notifications/clear", data=json.dumps(
+                dict(input="wrong fields")), 
+                content_type='application/json')
+            assert response1.status_code == 400
+            response2 = self.app.get('/group/' + thisGroup + "/notifications")
+            response2_data = json.loads(response2.data)
+            assert len(response2_data["notifications"]) == 0
