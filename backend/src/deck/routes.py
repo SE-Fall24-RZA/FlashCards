@@ -572,8 +572,9 @@ def get_shared_decks_with_user():
         if shared_deck_ids != None:
             for deck_id in shared_deck_ids:
                 deck = db.child("deck").child(deck_id).get().val()
-                deck['id'] = deck_id
-                shared_deck_list.append(deck)
+                if deck != None:
+                    deck['id'] = deck_id
+                    shared_deck_list.append(deck)
         return jsonify(shared_decks=shared_deck_list, message='Fetching shared decks successful', status=200), 200
     except Exception as e:
         return jsonify(message=f'Fetching shared decks failed {e}', status=400), 400
