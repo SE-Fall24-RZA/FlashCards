@@ -198,7 +198,6 @@ def adddecktofolder():
         ), 400
 
 
-
 @folder_bp.route('/folder/remove-deck', methods=['DELETE'])
 @cross_origin(supports_credentials=True)
 def removedeckfromfolder():
@@ -207,22 +206,40 @@ def removedeckfromfolder():
         data = request.get_json()
         folder_id = data['folderId']
         deck_id = data['deckId']
+        
+        # Log the received folderId and deckId for debugging
+        print(f"Received folderId: {folder_id}, deckId: {deck_id}")
 
+        # Fetch records from folder_deck where folderId matches
         folder_deck_ref = db.child("folder_deck").order_by_child("folderId").equal_to(folder_id).get()
+        
+        deck_found = False  # Flag to check if the deck is found and removed
+        
+        # Iterate through folder_deck entries to find matching deckId
         for fd in folder_deck_ref.each():
+            print(f"Checking deckId: {fd.val().get('deckId')} against {deck_id}")
             if fd.val().get('deckId') == deck_id:
-                db.child("folder_deck").child(fd.key()).remove()
-                break
+                db.child("folder_deck").child(fd.key()).remove()  # Remove the record from folder_deck
+                deck_found = True
+                break  # Exit the loop once deck is removed
+
+        if not deck_found:
+            return jsonify(
+                message="Deck not found in the folder.",
+                status=404
+            ), 404
 
         return jsonify(
             message='Deck removed from folder successfully',
             status=200
         ), 200
     except Exception as e:
+        print(f"Error: {e}")  # Log any exceptions
         return jsonify(
             message=f"Failed to remove deck from folder: {e}",
             status=400
         ), 400
+
     
 @folder_bp.route('/decks/<folder_id>', methods=['GET'])
 @cross_origin(supports_credentials=True)

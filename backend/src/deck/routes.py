@@ -23,7 +23,7 @@
 '''routes.py is a file in deck folder that has all the functions defined that manipulate the deck. All CRUD functions are defined here.'''
 from flask import Blueprint, jsonify, request
 from flask_cors import cross_origin
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from statistics import mean
 
 try:
@@ -456,11 +456,49 @@ def get_user_streak():
         # Retrieve streak information for the user
         user_streak = db.child("streaks").child(user_id).get().val()
         if not user_streak:
-            # If no streak data exists, return default values
+            # If no streak data exists, set default values
             user_streak = {
                 "currentStreak": 0,
                 "lastPracticeDate": None
             }
+
+        # Get the user's quiz attempts to check for the last attempt date
+        quiz_attempts = db.child("quizAttempts").get().each()
+        
+        last_quiz_date = None
+        for attempt in quiz_attempts:
+            attempt_data = attempt.val()
+            if attempt_data and 'lastAttempt' in attempt_data:
+                last_attempt = attempt_data['lastAttempt']
+                if last_attempt:
+                    try:
+                        # Remove the 'Z' at the end of the timestamp (UTC indicator)
+                        last_attempt = last_attempt.rstrip('Z')
+                        # Convert the 'lastAttempt' timestamp to a datetime object
+                        parsed_date = datetime.fromisoformat(last_attempt)
+                        if last_quiz_date is None or parsed_date > last_quiz_date:
+                            last_quiz_date = parsed_date
+                    except ValueError as parse_error:
+                        print(f"ERROR: Failed to parse date: {last_attempt}, Error: {parse_error}")
+        
+        # Calculate current streak
+        streak = user_streak.get("currentStreak", 0)
+        if last_quiz_date:
+            # Make current date timezone-aware in UTC
+            current_date = datetime.now(timezone.utc)
+
+            # Compare the two timezone-aware datetime objects
+            if current_date - last_quiz_date <= timedelta(days=1):
+                streak += 1
+            else:
+                streak = 1
+
+        # Update the user's streak data
+        user_streak["currentStreak"] = streak
+        user_streak["lastPracticeDate"] = last_quiz_date.isoformat() if last_quiz_date else None
+
+        # Save updated streak data to the database
+        db.child("streaks").child(user_id).set(user_streak)
 
         return jsonify({
             "streak": user_streak,
@@ -473,7 +511,6 @@ def get_user_streak():
             "message": f"An error occurred: {e}",
             "status": 400
         }), 400
-
     
 @deck_bp.route('/deck/practice', methods=['POST'])
 @cross_origin(supports_credentials=True)
