@@ -1,6 +1,6 @@
 import json
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, Mock
 from flask import Flask
 from src.folders.routes import folder_bp  # Adjust the import based on your app structure
 import sys
@@ -136,19 +136,32 @@ class TestFolders(unittest.TestCase):
     def test_remove_deck_from_folder_success(self, mock_db):
         '''Test successful removal of a deck from a folder'''
         deck_data = {"folderId": "folder_id", "deckId": "deck_id"}
+
+        mock_query = mock_db.child.return_value.order_by_child.return_value.equal_to.return_value.get.return_value
+        mock_fd = Mock() 
+        mock_fd.val.return_value = {"deckId": "deck_id"}
+        mock_fd.key.return_value = "mock_key"
+        mock_query.each.return_value = [mock_fd]  # Simulate matching records
+
         response = self.app.delete('/folder/remove-deck', data=json.dumps(deck_data), content_type='application/json')
         assert response.status_code == 200
+
         response_data = json.loads(response.data)
         assert response_data['message'] == 'Deck removed from folder successfully'
+
+        mock_db.child.return_value.child.return_value.remove.assert_called_once_with()
+
 
     @patch('src.folders.routes.db')
     def test_remove_deck_from_folder_error(self, mock_db):
         '''Test failure when removing a deck from a folder'''
         deck_data = {"folderId": "folder_id", "deckId": "deck_id"}
+
         mock_db.child.return_value.order_by_child.return_value.equal_to.return_value.get.side_effect = Exception("Remove failed")
 
         response = self.app.delete('/folder/remove-deck', data=json.dumps(deck_data), content_type='application/json')
         assert response.status_code == 400
+
         response_data = json.loads(response.data)
         assert "Failed to remove deck from folder" in response_data['message']
 
