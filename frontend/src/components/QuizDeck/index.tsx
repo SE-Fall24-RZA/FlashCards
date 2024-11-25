@@ -84,6 +84,7 @@ export default function Quiz({ cards }: QuizProps) {
 
     setTimeout(() => {
       setSelectedOption(null);
+
       goToNextQuestion(isCorrect);
     }, 1000);
   };
@@ -106,17 +107,22 @@ export default function Quiz({ cards }: QuizProps) {
   };
 
   const updateLeaderboard = async (finalScore: number, finalIncorrectAnswers: number) => {
+
     const flashCardUser = window.localStorage.getItem("flashCardUser");
-    const { localId = "", email = "" } = flashCardUser ? JSON.parse(flashCardUser) : {};
+    const { localId = "", email = "" } = flashCardUser
+      ? JSON.parse(flashCardUser)
+      : {};
 
     if (localId && email) {
       try {
         const response = await http.get(`/deck/${id}/user-score/${localId}`);
+
         const existingScore = response.data?.score["correct"];
         if (
           finalScore > existingScore ||
           (response.data.score["correct"] === 0 && response.data.score["incorrect"] === 0)
         ) {
+
           await http.post(`/deck/${id}/update-leaderboard`, {
             userId: localId,
             userEmail: email,
@@ -124,6 +130,18 @@ export default function Quiz({ cards }: QuizProps) {
             incorrect: finalIncorrectAnswers,
           });
         }
+
+        // Create a unique attempt ID, you can use a timestamp or generate one
+        const attemptId = new Date().toISOString();
+
+        // Store the attempt in the quizAttempts collection
+        await http.post(`/deck/${id}/add-quiz-attempt`, {
+          userId: localId,
+          userEmail: email,
+          correct: finalScore, // Pass the final correct answers
+          incorrect: finalIncorrectAnswers, // Pass the final incorrect answers
+          lastAttempt: attemptId, // You can use the attempt ID or timestamp here
+        });
       } catch (error) {
         console.error("Error updating leaderboard:", error);
       }
@@ -186,9 +204,9 @@ if (isQuizFinished) {
   }
 
   return (
-    <div className="quiz-container">
+    <div className='quiz-container'>
       <h2>{currentCard.front}</h2>
-      <div className="options">
+      <div className='options'>
         {shuffledOptions.map((option, index) => (
           <button
             key={index}

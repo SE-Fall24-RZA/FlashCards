@@ -23,7 +23,8 @@
 '''routes.py is a file in deck folder that has all the functions defined that manipulate the deck. All CRUD functions are defined here.'''
 from flask import Blueprint, jsonify, request
 from flask_cors import cross_origin
-from datetime import datetime
+from datetime import datetime, timedelta
+from statistics import mean
 
 try:
     from .. import firebase
@@ -246,6 +247,278 @@ def get_user_score(deckId, userId):
             "message": f"An error occurred: {e}",
             "status": 400
         }), 400
+    
+@deck_bp.route('/deck/<deckId>/analysis', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def get_deck_analysis(deckId):
+    '''This endpoint fetches analysis data for a specific deck.'''
+    try:
+        # Fetch leaderboard data for the given deck
+        leaderboard_entries = db.child("leaderboard").child(deckId).get()
+        if not leaderboard_entries.each():
+            return jsonify({
+                "message": "No data available for analysis.",
+                "status": 404
+            }), 404
+
+        total_correct = 0
+        total_incorrect = 0
+        total_attempts = 0
+        all_correct_scores = []
+        all_incorrect_scores = []
+
+        for entry in leaderboard_entries.each():
+            data = entry.val()
+            correct = data.get("correct", 0)
+            incorrect = data.get("incorrect", 0)
+            attempts = correct + incorrect
+
+            total_correct += correct
+            total_incorrect += incorrect
+            total_attempts += attempts
+
+            all_correct_scores.append(correct)
+            all_incorrect_scores.append(incorrect)
+
+        # Calculate averages
+        avg_correct = mean(all_correct_scores) if all_correct_scores else 0
+        avg_incorrect = mean(all_incorrect_scores) if all_incorrect_scores else 0
+        avg_attempts = total_attempts / len(all_correct_scores) if all_correct_scores else 0
+
+        analysis_data = {
+            "total_correct": total_correct,
+            "total_incorrect": total_incorrect,
+            "total_attempts": total_attempts,
+            "average_correct": avg_correct,
+            "average_incorrect": avg_incorrect,
+            "average_attempts": avg_attempts,
+        }
+
+        return jsonify({
+            "analysis": analysis_data,
+            "message": "Analysis data fetched successfully",
+            "status": 200
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "message": f"An error occurred: {e}",
+            "status": 400
+        }), 400
+    
+@deck_bp.route('/deck/<deckId>/add-quiz-attempt', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def add_quiz_attempt(deckId):
+    '''This endpoint adds a new quiz attempt to the quizAttempts node.'''
+    try:
+        data = request.get_json()
+        user_id = data.get("userId")
+        user_email = data.get("userEmail")
+        correct = data.get("correct", 0)
+        incorrect = data.get("incorrect", 0)
+        last_attempt = data.get("lastAttempt", "")
+
+        # Sanitize lastAttempt to make it a valid Firebase path (replace invalid characters)
+        sanitized_last_attempt = last_attempt.replace(":", "-").replace(".", "-")
+
+        # Add the new quiz attempt to the quizAttempts node
+        db.child("quizAttempts").child(deckId).child(user_id).child(sanitized_last_attempt).set({
+            "userEmail": user_email,
+            "correct": correct,
+            "incorrect": incorrect,
+            "lastAttempt": last_attempt,
+        })
+
+        return jsonify({
+            "message": "Quiz attempt added successfully.",
+            "status": 200
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "message": f"An error occurred: {e}",
+            "status": 400
+        }), 400
+
+@deck_bp.route('/deck/<deckId>/user-progress/<userId>', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def get_user_progress(deckId, userId):
+    '''This endpoint fetches the user's progress over time for a specific deck from quiz attempts.'''
+    try:
+        # Fetch all the quiz attempts for the specified deck and user
+        user_progress_entries = db.child("quizAttempts").child(deckId).child(userId).get()
+
+        if user_progress_entries.val() is None:
+            # If no quiz attempts found, return an empty progress list and a message
+            return jsonify({
+                "progress": [],
+                "message": "No progress data found for the user.",
+                "status": 404
+            }), 404
+
+        progress_data = user_progress_entries.val()
+        progress_over_time = []
+
+        # Iterate through all quiz attempts, which are nested under timestamp keys
+        for timestamp, attempt in progress_data.items():
+            # Extract and format the date from 'lastAttempt' (assuming it's in ISO format)
+            last_attempt = attempt.get("lastAttempt", "")
+            if last_attempt:
+                try:
+                    # Remove the 'Z' at the end of the timestamp (UTC indicator)
+                    last_attempt = last_attempt.rstrip('Z')
+                    # Convert the 'lastAttempt' timestamp to a date string (YYYY-MM-DD)
+                    formatted_date = datetime.fromisoformat(last_attempt).strftime('%Y-%m-%d')
+                except ValueError:
+                    # In case the date is not valid, set formatted_date to None
+                    formatted_date = None
+            else:
+                formatted_date = None
+
+            # Add each quiz attempt's data to the list
+            progress_over_time.append({
+                "userEmail": attempt.get("userEmail", ""),
+                "correct": attempt.get("correct", 0),
+                "incorrect": attempt.get("incorrect", 0),
+                "lastAttempt": last_attempt,
+                "date": formatted_date,  # Add the formatted date here
+                "total_attempts": attempt.get("correct", 0) + attempt.get("incorrect", 0),
+            })
+
+        # Return the structured response
+        return jsonify({
+            "progress": progress_over_time,
+            "message": "User progress fetched successfully",
+            "status": 200
+        }), 200
+
+    except Exception as e:
+        # Handle any exceptions that occur
+        return jsonify({
+            "message": f"An error occurred: {e}",
+            "status": 400
+        }), 400
+
+
+@deck_bp.route('/deck/<deckId>/performance-trends', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def get_deck_performance_trends(deckId):
+    '''This endpoint fetches performance trends for the entire deck over time.'''
+    try:
+        # Fetch all entries for the deck
+        leaderboard_entries = db.child("leaderboard").child(deckId).get()
+        if not leaderboard_entries.each():
+            return jsonify({
+                "message": "No performance data available.",
+                "status": 404
+            }), 404
+
+        trends = {}
+
+        for entry in leaderboard_entries.each():
+            data = entry.val()
+            date = datetime.fromisoformat(data.get("lastAttempt")).strftime('%Y-%m-%d')
+            correct = data.get("correct", 0)
+            incorrect = data.get("incorrect", 0)
+
+            # Aggregate scores by date
+            if date not in trends:
+                trends[date] = {"correct": 0, "incorrect": 0, "attempts": 0}
+            trends[date]["correct"] += correct
+            trends[date]["incorrect"] += incorrect
+            trends[date]["attempts"] += (correct + incorrect)
+
+        # Convert trends dict to a sorted list by date
+        sorted_trends = [
+            {"date": date, **data}
+            for date, data in sorted(trends.items())
+        ]
+
+        return jsonify({
+            "trends": sorted_trends,
+            "message": "Performance trends fetched successfully",
+            "status": 200
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "message": f"An error occurred: {e}",
+            "status": 400
+        }), 400
+    
+@deck_bp.route('/user/streak', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def get_user_streak():
+    '''Fetch the user's current streak data.'''
+    user_id = request.args.get('userId')
+    
+    try:
+        # Retrieve streak information for the user
+        user_streak = db.child("streaks").child(user_id).get().val()
+        if not user_streak:
+            # If no streak data exists, return default values
+            user_streak = {
+                "currentStreak": 0,
+                "lastPracticeDate": None
+            }
+
+        return jsonify({
+            "streak": user_streak,
+            "message": "Streak data fetched successfully",
+            "status": 200
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "message": f"An error occurred: {e}",
+            "status": 400
+        }), 400
+
+    
+@deck_bp.route('/deck/practice', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def log_practice():
+    '''Log a practice session and update the streak.'''
+    try:
+        data = request.get_json()
+        user_id = data['userId']
+        deck_id = data['deckId']
+        current_date = datetime.utcnow().date()  # Use only date part, ignoring time
+
+        # Retrieve user's current streak data
+        user_streak = db.child("streaks").child(user_id).get().val()
+        if not user_streak:
+            # If no streak data exists, initialize it
+            user_streak = {
+                "currentStreak": 0,
+                "lastPracticeDate": None
+            }
+
+        # Check if the practice is on a consecutive day
+        last_practice_date = user_streak.get("lastPracticeDate")
+        if last_practice_date:
+            last_practice_date = datetime.strptime(last_practice_date, "%Y-%m-%d").date()
+            
+            if (current_date - last_practice_date).days == 1:
+                # Consecutive day, increment the streak
+                user_streak["currentStreak"] += 1
+            elif (current_date - last_practice_date).days > 1:
+                # Non-consecutive, reset the streak
+                user_streak["currentStreak"] = 1
+        else:
+            # No previous practice, start the streak
+            user_streak["currentStreak"] = 1
+
+        # Update the last practice date
+        user_streak["lastPracticeDate"] = current_date.isoformat()
+
+        # Save the updated streak data back to the database
+        db.child("streaks").child(user_id).update(user_streak)
+
+        return jsonify(message='Practice logged and streak updated', status=200), 200
+
+    except Exception as e:
+        return jsonify(message=f'Failed to log practice: {e}', status=400), 400
 
 # @deck_bp.route('/deck/<id>/last-opened', methods=['PATCH'])
 # @cross_origin(supports_credentials=True)

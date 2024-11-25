@@ -55,6 +55,15 @@ interface LeaderboardEntry {
   lastAttempt: string;
 }
 
+interface AnalysisData {
+  totalAttempts: number;
+  totalCorrect: number;
+  totalIncorrect: number;
+  averageAttempts: number;
+  averageCorrect: number;
+  averageIncorrect: number;
+}
+
 const PracticeDeck = () => {
   const navigate = useNavigate();
   const [deck, setDeck] = useState<Deck | null>(null);
@@ -63,8 +72,14 @@ const PracticeDeck = () => {
   const [fetchingCards, setFetchingCards] = useState(false);
   const [quizMode, setQuizMode] = useState(false);
   const [leaderboardVisible, setLeaderboardVisible] = useState(false);
-  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>(
+    []
+  );
+  const [analysisVisible, setAnalysisVisible] = useState(false);
+  const [userProgress, setUserProgress] = useState<any[]>([]); // For storing user progress
+  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [sharedWithUser, setSharedWithUser] = useState(false)
+
 
   const flashCardUser = window.localStorage.getItem("flashCardUser");
   const { localId } = (flashCardUser && JSON.parse(flashCardUser)) || {};
@@ -75,6 +90,13 @@ const PracticeDeck = () => {
     fetchCards();
     fetchSharedDecks();
   }, []);
+
+  useEffect(() => {
+    if (analysisVisible) {
+      fetchAnalysis();
+      fetchUserProgress();
+    }
+  }, [analysisVisible]);
 
   const fetchDeck = async () => {
     setFetchingDeck(true);
@@ -100,14 +122,67 @@ const PracticeDeck = () => {
     try {
       const res = await http.get(`/deck/${id}/leaderboard`);
       // Format lastAttempt before setting leaderboard data
-      const formattedLeaderboard = (res.data?.leaderboard || []).map((entry: { lastAttempt: string | number | Date; }) => ({
-        ...entry,
-        lastAttempt: new Date(entry.lastAttempt).toLocaleString(), // Convert to human-readable format
-      }));
+      const formattedLeaderboard = (res.data?.leaderboard || []).map(
+        (entry: { lastAttempt: string | number | Date }) => ({
+          ...entry,
+          lastAttempt: new Date(entry.lastAttempt).toLocaleString(), // Convert to human-readable format
+        })
+      );
       setLeaderboardData(formattedLeaderboard);
     } catch (error) {
       console.error("Error fetching leaderboard:", error);
     }
+  };
+
+  const fetchAnalysis = async () => {
+    try {
+      const res = await http.get(`/deck/${id}/analysis`);
+
+      // Extract the analysis data
+      const {
+        total_attempts,
+        total_correct,
+        total_incorrect,
+        average_attempts,
+        average_correct,
+        average_incorrect,
+      } = res.data.analysis;
+
+      // Set the analysis data
+      setAnalysisData({
+        totalAttempts: total_attempts,
+        totalCorrect: total_correct,
+        totalIncorrect: total_incorrect,
+        averageAttempts: average_attempts,
+        averageCorrect: average_correct,
+        averageIncorrect: average_incorrect,
+      });
+    } catch (error) {
+      console.error("Error fetching analysis:", error);
+    }
+  };
+
+  const fetchUserProgress = async () => {
+    try {
+      const res = await http.get(`/deck/${id}/user-progress/${localId}`);
+      if (res.data.progress) {
+        setUserProgress(res.data.progress);
+      } else {
+        console.log(res.data.message); // If no progress found
+      }
+    } catch (error) {
+      console.error("Error fetching user progress:", error);
+    }
+  };
+
+  const showAnalysis = () => {
+    fetchAnalysis();
+    setAnalysisVisible(true);
+  };
+
+  // Close the analysis modal
+  const closeAnalysis = () => {
+    setAnalysisVisible(false);
   };
 
   const showLeaderboard = () => {
@@ -156,37 +231,39 @@ const PracticeDeck = () => {
     {
       title: "Rank", // New column for rank
       render: (_: any, __: any, index: number) => index + 1, // Automatically generates the row number
-      key: "rank"
+      key: "rank",
     },
     { title: "Email", dataIndex: "userEmail", key: "userEmail" },
     { title: "Correct Answers", dataIndex: "correct", key: "correct" },
-    { title: "Incorrect Answers", dataIndex: "incorrect", key: "incorrect" }
+    { title: "Incorrect Answers", dataIndex: "incorrect", key: "incorrect" },
   ];
 
   const { title, description, userId } = deck || {};
 
   return (
-    <div className="dashboard-page dashboard-commons">
+    <div className='dashboard-page dashboard-commons'>
       <section>
-        <div className="container">
-          <div className="row">
-            <div className="col-md-12">
-              <Card className="welcome-card practice-deck">
-                <div className="d-flex justify-content-between align-items-center">
+        <div className='container'>
+          <div className='row'>
+            <div className='col-md-12'>
+              <Card className='welcome-card practice-deck'>
+                <div className='d-flex justify-content-between align-items-center'>
                   <div>
                     <h3>
                       <i
-                        className="lni lni-arrow-left back-icon"
+                        className='lni lni-arrow-left back-icon'
                         onClick={() => navigate(-1)}
                       ></i>
                     </h3>
-                    <h3><b>{title}</b></h3>
+                    <h3>
+                      <b>{title}</b>
+                    </h3>
                     <p>{description}</p>
                   </div>
-                  <div className="d-flex gap-2">
+                  <div className='d-flex gap-2'>
                     {localId === userId && (
                       <Link to={`/deck/${id}/update`}>
-                        <button className="btn btn-white">Update Deck</button>
+                        <button className='btn btn-white'>Update Deck</button>
                       </Link>
                     )}
                     {localId !== userId && !sharedWithUser && (
@@ -203,16 +280,16 @@ const PracticeDeck = () => {
                       </Popconfirm>
                     )}
                     <button
-                      className="btn btn-white"
+                      className='btn btn-white'
                       onClick={() => setQuizMode(!quizMode)}
                     >
                       {quizMode ? "Exit Quiz" : "Take Quiz"}
                     </button>
-                    <button
-                      className="btn btn-white"
-                      onClick={showLeaderboard}
-                    >
+                    <button className='btn btn-white' onClick={showLeaderboard}>
                       View Leaderboard
+                    </button>
+                    <button className='btn btn-white' onClick={showAnalysis}>
+                      View Analysis
                     </button>
                   </div>
                 </div>
@@ -220,19 +297,19 @@ const PracticeDeck = () => {
             </div>
           </div>
 
-          <div className="flash-card__list row justify-content-center mt-4">
-            <div className="col-md-8">
+          <div className='flash-card__list row justify-content-center mt-4'>
+            <div className='col-md-8'>
               {fetchingCards ? (
                 <div
-                  className="col-md-12 text-center d-flex justify-content-center align-items-center"
+                  className='col-md-12 text-center d-flex justify-content-center align-items-center'
                   style={{ height: "300px" }}
                 >
-                  <PropagateLoader color="#221daf" />
+                  <PropagateLoader color='#221daf' />
                 </div>
               ) : cards.length === 0 ? (
-                <div className="row justify-content-center empty-pane">
-                  <div className="text-center">
-                    <img className="img-fluid" src={EmptyImg} />
+                <div className='row justify-content-center empty-pane'>
+                  <div className='text-center'>
+                    <img className='img-fluid' src={EmptyImg} />
                     <p>No Cards Added Yet</p>
                   </div>
                 </div>
@@ -248,24 +325,85 @@ const PracticeDeck = () => {
 
       {/* Leaderboard Modal */}
       <Modal
-        title="Leaderboard"
+        title='Leaderboard'
         open={leaderboardVisible}
         onCancel={closeLeaderboard}
         footer={[
-          <Button key="close" onClick={closeLeaderboard}>
+          <Button key='close' onClick={closeLeaderboard}>
             Close
           </Button>,
         ]}
-        width="80%" // Set a width for the modal
-        style={{ maxHeight: '80vh', overflowY: 'auto' }} // Allow for scroll if content is too tall
-        bodyStyle={{ padding: '0' }} // Optionally adjust padding
+        width='80%' // Set a width for the modal
+        style={{ maxHeight: "80vh", overflowY: "auto" }} // Allow for scroll if content is too tall
+        bodyStyle={{ padding: "0" }} // Optionally adjust padding
       >
         <Table
           columns={leaderboardColumns}
           dataSource={leaderboardData}
           pagination={false}
-          rowKey="userEmail"  // Ensure a unique key for each row
+          rowKey='userEmail' // Ensure a unique key for each row
         />
+      </Modal>
+
+      {/* Analysis Modal */}
+      <Modal
+        title='Analysis Summary'
+        open={analysisVisible}
+        onCancel={closeAnalysis}
+        footer={[
+          <Button key='close' onClick={closeAnalysis}>
+            Close
+          </Button>,
+        ]}
+        width='60%'
+        style={{ maxHeight: "80vh", overflowY: "auto" }}
+        bodyStyle={{ padding: "20px" }}
+      >
+        {/* Deck Analysis */}
+        {analysisData ? (
+          <div>
+            <h4>Leaderboard Analysis</h4>
+            <p>Total Attempts: {analysisData.totalAttempts}</p>
+            <p>Total Correct: {analysisData.totalCorrect}</p>
+            <p>Total Incorrect: {analysisData.totalIncorrect}</p>
+            <p>Average Attempts: {analysisData.averageAttempts}</p>
+            <p>Average Correct: {analysisData.averageCorrect}</p>
+            <p>Average Incorrect: {analysisData.averageIncorrect}</p>
+          </div>
+        ) : (
+          <p>Loading deck analysis...</p>
+        )}
+
+        {/* User Progress */}
+        {userProgress.length > 0 ? (
+          <div className='user-progress'>
+            <h4>Your previous attempts</h4>
+            <Table
+              dataSource={userProgress}
+              columns={[
+                {
+                  title: "Date",
+                  dataIndex: "date",
+                  key: "date",
+                },
+                {
+                  title: "Correct Answers",
+                  dataIndex: "correct",
+                  key: "correct",
+                },
+                {
+                  title: "Incorrect Answers",
+                  dataIndex: "incorrect",
+                  key: "incorrect",
+                },
+              ]}
+              rowKey='date'
+              pagination={false}
+            />
+          </div>
+        ) : (
+          <p>No progress data available</p>
+        )}
       </Modal>
     </div>
   );
