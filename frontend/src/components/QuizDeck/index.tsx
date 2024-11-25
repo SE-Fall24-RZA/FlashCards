@@ -209,8 +209,8 @@ export default function Quiz({ cards }: QuizProps) {
         <h2>Set Quiz Time</h2>
         <input
           type='number'
-          placeholder='Enter time in minutes (0 for Timer Not Required)'
-          value={inputTime}
+          placeholder='Enter time in minutes (0 for No timer)'
+          value={Math.max(0, parseInt(inputTime, 10))}
           onChange={(e) => setInputTime(e.target.value)} // Update `inputTime` only
         />
         <button onClick={startQuiz} className='btn btn-primary'>
