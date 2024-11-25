@@ -19,6 +19,7 @@ const JoinGroup = () => {
         try {
             if(!joining) {
                 setJoining(true)
+                const groupRes = await http.get(`/group/${id}`)
                 const response = await http.patch(`/group/${id}/addMember`, {
                     localId: localId,
                     email: email,
@@ -28,6 +29,9 @@ const JoinGroup = () => {
                     await http.post(`/group/${id}/messages`, {
                         email: "SYSTEM",
                         message: `User '${email}' has joined the group.  Welcome!`
+                    })
+                    await http.put(`/group/${id}/notifications`, {
+                        members: groupRes.data.group.members
                     })
                     setJoinedGroup(true)
                 }

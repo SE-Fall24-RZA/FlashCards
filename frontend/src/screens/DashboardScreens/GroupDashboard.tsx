@@ -140,6 +140,9 @@ const GroupDashboard = () => {
                 email: "SYSTEM",
                 message: ` User '${email}' has added deck '${deck.title}' to the group`
             })
+            await http.put(`/group/${id}/notifications`, {
+                members: group?.members
+            })
             Swal.fire("Deck Added Successfully!", "", "success").then(async () => {
                 fetchGroup()
                 await fetchChat()
@@ -163,6 +166,9 @@ const GroupDashboard = () => {
             await http.post(`/group/${id}/messages`, {
                 email: "SYSTEM",
                 message: ` User '${user?.email}' has been removed from the group`
+            })
+            await http.put(`/group/${id}/notifications`, {
+                members: group?.members
             })
             Swal.fire("Member removed Successfully!", "", "success").then(async () => {
                 fetchGroup()
@@ -189,6 +195,9 @@ const GroupDashboard = () => {
                 email: "SYSTEM",
                 message: ` User '${email}' has removed deck '${deck?.title}' from the group`
             })
+            await http.put(`/group/${id}/notifications`, {
+                members: group?.members
+            })
             Swal.fire("Deck removed Successfully!", "", "success").then(async () => {
                 fetchGroup()
                 await fetchChat()
@@ -212,6 +221,7 @@ const GroupDashboard = () => {
             if(chatRef.current) {
                 chatRef.current.scrollTop = chatRef.current.scrollHeight
             }
+            await http.put(`/group/${id}/notifications/clear`, {user: {userId: localId, email: email}})
         }
         catch (error) {
             console.error("error fetching chat:", error)
@@ -222,6 +232,9 @@ const GroupDashboard = () => {
             const res = await http.post(`/group/${id}/messages`, {
                 email: email,
                 message: textMessage
+            })
+            await http.put(`/group/${id}/notifications`, {
+                members: group?.members
             })
         } catch (e) {
             Swal.fire("Error posting message", "", "error")
