@@ -7,7 +7,7 @@ import json
 from src.auth.routes import auth_bp
 from src.deck.routes import deck_bp
 from src.cards.routes import card_bp
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytest
 from pathlib import Path
 from unittest.mock import call
@@ -636,6 +636,93 @@ class TestDeck(unittest.TestCase):
         response_data = json.loads(response.data)
         assert response_data['status'] == 400
         assert "An error occurred" in response_data['message']
+
+    @patch('src.deck.routes.db')
+    def test_log_practice_initialize_streak(self, mock_db):
+        '''Test logging practice when no streak data exists (initialize streak).'''
+        # Arrange
+        mock_db.child.return_value.child.return_value.get.return_value.val.return_value = None  # No existing streak data
+
+        # Act
+        response = self.app.post('/deck/practice', data=json.dumps({
+            "userId": "test-user",
+            "deckId": "test-deck"
+        }), content_type='application/json')
+
+        # Assert
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data['message'] == 'Practice logged and streak updated'
+        mock_db.child().child().update.assert_called_once_with({
+            "currentStreak": 1,
+            "lastPracticeDate": datetime.utcnow().date().isoformat()
+        })
+
+    @patch('src.deck.routes.db')
+    def test_log_practice_increment_streak(self, mock_db):
+        '''Test logging practice on a consecutive day (increment streak).'''
+        # Arrange
+        yesterday = (datetime.utcnow().date() - timedelta(days=1)).isoformat()
+        mock_db.child.return_value.child.return_value.get.return_value.val.return_value = {
+            "currentStreak": 3,
+            "lastPracticeDate": yesterday
+        }
+
+        # Act
+        response = self.app.post('/deck/practice', data=json.dumps({
+            "userId": "test-user",
+            "deckId": "test-deck"
+        }), content_type='application/json')
+
+        # Assert
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data['message'] == 'Practice logged and streak updated'
+        mock_db.child().child().update.assert_called_once_with({
+            "currentStreak": 4,
+            "lastPracticeDate": datetime.utcnow().date().isoformat()
+        })
+
+    @patch('src.deck.routes.db')
+    def test_log_practice_reset_streak(self, mock_db):
+        '''Test logging practice after a gap of more than one day (reset streak).'''
+        two_days_ago = (datetime.utcnow().date() - timedelta(days=2)).isoformat()
+        mock_db.child.return_value.child.return_value.get.return_value.val.return_value = {
+            "currentStreak": 5,
+            "lastPracticeDate": two_days_ago
+        }
+
+        # Act
+        response = self.app.post('/deck/practice', data=json.dumps({
+            "userId": "test-user",
+            "deckId": "test-deck"
+        }), content_type='application/json')
+
+        # Assert
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data['message'] == 'Practice logged and streak updated'
+        mock_db.child().child().update.assert_called_once_with({
+            "currentStreak": 1,
+            "lastPracticeDate": datetime.utcnow().date().isoformat()
+        })
+
+    @patch('src.deck.routes.db')
+    def test_log_practice_error(self, mock_db):
+        '''Test logging practice when an error occurs.'''
+        # Arrange
+        mock_db.child.return_value.child.return_value.get.side_effect = Exception("Database error")
+
+        # Act
+        response = self.app.post('/deck/practice', data=json.dumps({
+            "userId": "test-user",
+            "deckId": "test-deck"
+        }), content_type='application/json')
+
+        # Assert
+        assert response.status_code == 400
+        response_data = json.loads(response.data)
+        assert 'Failed to log practice' in response_data['message']
             
     
 if __name__=="__main__":
