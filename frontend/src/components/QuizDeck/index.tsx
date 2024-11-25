@@ -254,7 +254,7 @@ export default function Quiz({ cards }: QuizProps) {
       <p>
         Question {currentCardIndex + 1} / {cards.length}
       </p>
-      <p>Time Left: {timeLeft} seconds</p>
+      {timeLeft > 0 && <p>Time Left: {timeLeft} seconds</p>}
     </div>
   );
 }
