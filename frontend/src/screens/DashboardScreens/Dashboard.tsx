@@ -47,7 +47,7 @@ const Dashboard = () => {
     current: 0,
     lastPracticeDate: null,
   });
-  const [sharedDecks, setSharedDecks] = useState<Deck[]>([])
+  const [sharedDecks, setSharedDecks] = useState<Deck[]>([]);
 
   // Refs for sliders
   const sliderRefLibrary = useRef<HTMLDivElement>(null);
@@ -62,8 +62,8 @@ const Dashboard = () => {
   const [canScrollRightGroup, setCanScrollRightGroup] = useState(false);
 
   const [canScrollLeftShare, setCanScrollLeftShare] = useState(false);
-  const [canScrollRightShare, setCanScrollRightShare] = useState(false);  
-  
+  const [canScrollRightShare, setCanScrollRightShare] = useState(false);
+
   const flashCardUser = window.localStorage.getItem("flashCardUser");
   const { localId } = (flashCardUser && JSON.parse(flashCardUser)) || {};
 
@@ -81,11 +81,11 @@ const Dashboard = () => {
     updateArrowsVisibilityLibrary();
     updateArrowsVisibilityRecent();
     updateArrowsVisibilityGroups();
-    updateArrowsVisibilityShared()
+    updateArrowsVisibilityShared();
     const sliderLib = sliderRefLibrary.current;
     const sliderRec = sliderRefRecent.current;
     const sliderGroup = sliderRefGroup.current;
-    const sliderShared = sliderRefShared.current
+    const sliderShared = sliderRefShared.current;
 
     if (sliderLib) {
       sliderLib.addEventListener("scroll", updateArrowsVisibilityLibrary);
@@ -99,7 +99,7 @@ const Dashboard = () => {
       sliderGroup.addEventListener("scroll", updateArrowsVisibilityGroups);
       //return () => sliderGroup.removeEventListener("scroll", updateArrowsVisibilityGroups);
     }
-    if (sliderShared){
+    if (sliderShared) {
       sliderShared.addEventListener("scroll", updateArrowsVisibilityShared);
       //return () => sliderGroup.removeEventListener("scroll", updateArrowsVisibilityGroups);
     }
@@ -162,12 +162,14 @@ const Dashboard = () => {
 
   const fetchSharedDecks = async () => {
     try {
-      const res = await http.get("/deck/share", { params: { localId: localId } });
+      const res = await http.get("/deck/share", {
+        params: { localId: localId },
+      });
       setSharedDecks(res.data?.shared_decks || []);
     } catch (err) {
       console.error("Error fetching folders:", err);
     }
-  }
+  };
 
   const updateLastOpened = async (deckId: string) => {
     const timestamp = new Date().toISOString(); // Get the current timestamp
@@ -203,13 +205,22 @@ const Dashboard = () => {
 
   const handleFolderClick = async (folder: Folder) => {
     try {
+      // Fetch decks by folder ID
       const res = await http.get(`/decks/${folder.id}`);
-      setSelectedFolderDecks(res.data?.decks || []);
-      setIsFolderPopupVisible(true);
+
+      // Ensure the response data has decks and add the folderId to each deck
+      const decksWithFolderId: Deck[] =
+        res.data?.decks?.map((deck: Deck) => ({
+          ...deck,
+          folderId: folder.id, // Add the folderId to each deck
+        })) || [];
+
+      // Set the decks for the selected folder
+      setSelectedFolderDecks(decksWithFolderId);
+      setIsFolderPopupVisible(true); // Show the folder modal
     } catch (err) {
-      console.error("Error fetching folders:", err);
+      console.error("Error fetching decks for folder:", err);
     }
-    setIsFolderPopupVisible(true);
   };
 
   const navigateToDeck = (deckId: string, deckTitle: string) => {
@@ -238,15 +249,84 @@ const Dashboard = () => {
     }
   };
 
-  const handleRemoveSharedDeck = async(deckId: string) => {
+  const handleRemoveDeck = async (deckId: string) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This deck will be removed from the folder.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, remove it!",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        // Get the folderId from the selected folder deck's folderId (assuming it is consistent)
+        const folderId = selectedFolderDecks[0]?.folderId; // Use folderId, which is now part of the deck
+        console.log(
+          `Removing deck with id: ${deckId} from folderId: ${folderId}`
+        );
+
+        // Make sure folderId exists before proceeding
+        if (!folderId) {
+          Swal.fire(
+            "Error!",
+            "No folderId found. Could not remove deck.",
+            "error"
+          );
+          return;
+        }
+
+        // Log the action before making the API call
+        console.log(
+          "Requesting removal of deck with id:",
+          deckId,
+          "from folderId:",
+          folderId
+        );
+
+        // Make the DELETE request to the backend API to remove the deck from the folder
+        const response = await http.delete("/folder/remove-deck", {
+          data: { folderId, deckId },
+        });
+
+        // Check the backend response before updating the UI
+        if (response.status === 200) {
+          // Update the state to remove the deck from selectedFolderDecks
+          const updatedDecks = selectedFolderDecks.filter(
+            (deck) => deck.id !== deckId
+          );
+          setSelectedFolderDecks(updatedDecks);
+
+          // Show success alert after deck removal
+          Swal.fire(
+            "Deleted!",
+            "The deck has been removed from the folder.",
+            "success"
+          );
+        } else {
+          throw new Error("Failed to remove deck from folder.");
+        }
+      } catch (error) {
+        console.error("Error removing deck:", error);
+        Swal.fire("Error!", "Failed to remove deck from folder.", "error");
+      }
+    }
+  };
+
+  const handleRemoveSharedDeck = async (deckId: string) => {
     try {
-      await http.patch(`/deck/share/remove`, { userId: localId, deckId: deckId });
-      fetchSharedDecks()
+      await http.patch(`/deck/share/remove`, {
+        userId: localId,
+        deckId: deckId,
+      });
+      fetchSharedDecks();
       Swal.fire("You have removed the shared deck", "", "success");
     } catch (err) {
       Swal.fire("Failed to remove shared deck", "", "error");
     }
-  }
+  };
 
   // Update arrows visibility based on scroll position
   const updateArrowsVisibilityLibrary = () => {
@@ -314,7 +394,10 @@ const Dashboard = () => {
   const scrollShared = (direction: "left" | "right") => {
     if (sliderRefShared.current) {
       const scrollAmount = direction === "left" ? -300 : 300;
-      sliderRefShared.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+      sliderRefShared.current.scrollBy({
+        left: scrollAmount,
+        behavior: "smooth",
+      });
     }
   };
 
@@ -548,62 +631,77 @@ const Dashboard = () => {
                 )}
               </div>
             )}
+          </div>
 
-        </div>
-
-        {/* Shared Decks Section */}
-        {sharedDecks.length > 0 && (<div className="row mt-4">
-            <div className="col-md-12">
-              <p className="title">Shared With You</p>
-            </div>
-            {sharedDecks.length === 0 ? (
-              <div className="row justify-content-center">
-                <p>No Shared Decks</p>
+          {/* Shared Decks Section */}
+          {sharedDecks.length > 0 && (
+            <div className='row mt-4'>
+              <div className='col-md-12'>
+                <p className='title'>Shared With You</p>
               </div>
-            ) : (
-              <div className="slider-container">
-                {canScrollLeftShare && (
-                  <button className="arrow left" onClick={() => scrollShared("left")}>
-                    <LeftOutlined />
-                  </button>
-                )}
-                <div className="deck-slider" ref={sliderRefShared}>
-                  {sharedDecks.map((deck) => (
-                    <div className="deck-card" key={deck.id}>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <Link to={`/deck/${deck.id}/practice`}>
-                          <h5>{deck.title}</h5>
-                        </Link>
-                      </div>
-                      <p className="description">{deck.description}</p>
-                      <p className="items-count">{deck.cards_count} item(s)</p>
-                      <div className="menu">
-                        <Link to={`/deck/${deck.id}/practice`}><button className="btn text-left"><i className="lni lni-book"></i>Practice</button></Link>
-                        <Popconfirm
-                          title={`Are you sure you want to remove this deck "${deck.title}"?`}
-                          onConfirm={() => handleRemoveSharedDeck(deck.id)}
-                          okText="Yes"
-                          cancelText="No"
-                        >
-                            <button className="btn text-danger"><i className="lni lni-trash-can"></i> Remove</button>
-                        </Popconfirm>
-                      </div>
-                    </div>
-                  ))}
+              {sharedDecks.length === 0 ? (
+                <div className='row justify-content-center'>
+                  <p>No Shared Decks</p>
                 </div>
-                {canScrollRightShare && (
-                  <button className="arrow right" onClick={() => scrollShared("right")}>
-                    <RightOutlined />
-                  </button>
-                )}
-              </div>
-            )}
-        </div>)}
+              ) : (
+                <div className='slider-container'>
+                  {canScrollLeftShare && (
+                    <button
+                      className='arrow left'
+                      onClick={() => scrollShared("left")}
+                    >
+                      <LeftOutlined />
+                    </button>
+                  )}
+                  <div className='deck-slider' ref={sliderRefShared}>
+                    {sharedDecks.map((deck) => (
+                      <div className='deck-card' key={deck.id}>
+                        <div className='d-flex justify-content-between align-items-center'>
+                          <Link to={`/deck/${deck.id}/practice`}>
+                            <h5>{deck.title}</h5>
+                          </Link>
+                        </div>
+                        <p className='description'>{deck.description}</p>
+                        <p className='items-count'>
+                          {deck.cards_count} item(s)
+                        </p>
+                        <div className='menu'>
+                          <Link to={`/deck/${deck.id}/practice`}>
+                            <button className='btn text-left'>
+                              <i className='lni lni-book'></i>Practice
+                            </button>
+                          </Link>
+                          <Popconfirm
+                            title={`Are you sure you want to remove this deck "${deck.title}"?`}
+                            onConfirm={() => handleRemoveSharedDeck(deck.id)}
+                            okText='Yes'
+                            cancelText='No'
+                          >
+                            <button className='btn text-danger'>
+                              <i className='lni lni-trash-can'></i> Remove
+                            </button>
+                          </Popconfirm>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {canScrollRightShare && (
+                    <button
+                      className='arrow right'
+                      onClick={() => scrollShared("right")}
+                    >
+                      <RightOutlined />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-        {/* Groups Section */}
-        <div className="row mt-4">
-            <div className="col-md-12">
-              <p className="title">Groups</p>
+          {/* Groups Section */}
+          <div className='row mt-4'>
+            <div className='col-md-12'>
+              <p className='title'>Groups</p>
             </div>
             {groups.length === 0 ? (
               <div className='row justify-content-center'>
@@ -668,18 +766,66 @@ const Dashboard = () => {
             open={isFolderPopupVisible}
             onCancel={() => setIsFolderPopupVisible(false)}
             footer={null}
+            width={600} // Adjust the width of the modal
           >
             {selectedFolderDecks.length === 0 ? (
               <p>No decks in this folder.</p>
             ) : (
               selectedFolderDecks.map(({ id, title }, index) => (
-                <div key={index}>
-                  <Button
-                    className='folder-deck-button'
+                <div
+                  key={index}
+                  className='deck-item'
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    marginBottom: "12px",
+                  }}
+                >
+                  {/* Button to navigate to deck */}
+                  <button
+                    className='btn text-left folder-deck-button'
                     onClick={() => navigateToDeck(id, title)}
+                    style={{
+                      flexGrow: 1,
+                      textAlign: "left",
+                      padding: "8px 16px",
+                      backgroundColor: "#f0f2f5",
+                      borderRadius: "4px",
+                      border: "1px solid #d9d9d9",
+                      fontSize: "16px",
+                    }}
                   >
+                    <i
+                      className='lni lni-folder'
+                      style={{ marginRight: "8px" }}
+                    ></i>
                     {title}
-                  </Button>
+                  </button>
+
+                  {/* Remove button */}
+                  <button
+                    className='btn'
+                    onClick={() => handleRemoveDeck(id)}
+                    style={{
+                      marginLeft: "12px",
+                      backgroundColor: "#ff4d4f",
+                      borderColor: "#ff4d4f",
+                      color: "#fff",
+                      borderRadius: "4px",
+                      padding: "8px 16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "16px",
+                      boxShadow: "none",
+                    }}
+                  >
+                    <i
+                      className='lni lni-trash'
+                      style={{ marginRight: "8px" }}
+                    ></i>
+                    Remove
+                  </button>
                 </div>
               ))
             )}
