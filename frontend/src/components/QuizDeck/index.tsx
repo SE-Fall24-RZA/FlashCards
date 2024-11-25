@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./styles.scss";
 import http from "utils/api"; // Assuming `http` is the instance for API requests
 import { useParams } from "react-router";
+import Swal from "sweetalert2";
 
 interface QuizProps {
   cards: { front: string; back: string; hint: string }[];
@@ -20,9 +21,8 @@ export default function Quiz({ cards }: QuizProps) {
   const { id } = useParams();
   const currentCard = cards[currentCardIndex];
   const [incorrectQuestions, setIncorrectQuestions] = useState<
-  { question: string; correctAnswer: string; userAnswer: string | null }[]
->([]);
-
+    { question: string; correctAnswer: string; userAnswer: string | null }[]
+  >([]);
 
   // Set quiz time and initialize the timer
   const startQuiz = () => {
@@ -31,7 +31,13 @@ export default function Quiz({ cards }: QuizProps) {
       setQuizTime(totalTimeInSeconds);
       setTimeLeft(totalTimeInSeconds);
     } else {
-      alert("Please enter a valid time in minutes.");
+      Swal.fire({
+        title: "Invalid Time",
+        text: "Please enter a valid time in minutes.",
+        icon: "error", // Shows error icon
+        confirmButtonText: "OK", // Button text
+        confirmButtonColor: "#221daf", // Button color
+      });
     }
   };
 
@@ -69,9 +75,16 @@ export default function Quiz({ cards }: QuizProps) {
     const isCorrect = option === currentCard.back;
 
     if (isCorrect) {
-      setScore((prevScore) => prevScore + 1);
+      // setScore((prevScore) => prevScore + 1);
+      setScore((prevScore) => {
+        const newScore = prevScore + 1;
+        return newScore;
+      });
     } else {
-      setIncorrectAnswers((prevIncorrect) => prevIncorrect + 1);
+      setIncorrectAnswers((prevIncorrect) => {
+        const newIncorrect = prevIncorrect + 1;
+        return newIncorrect;
+      });
       setIncorrectQuestions((prevIncorrectQuestions) => [
         ...prevIncorrectQuestions,
         {
@@ -103,11 +116,14 @@ export default function Quiz({ cards }: QuizProps) {
     const finalIncorrectAnswers = incorrectAnswers + unansweredQuestions;
     setIncorrectAnswers(finalIncorrectAnswers);
     setIsQuizFinished(true);
-    updateLeaderboard(score, finalIncorrectAnswers);
+    updateLeaderboard(score, cards.length - score);
+    console.log(score);
   };
 
-  const updateLeaderboard = async (finalScore: number, finalIncorrectAnswers: number) => {
-
+  const updateLeaderboard = async (
+    finalScore: number,
+    finalIncorrectAnswers: number
+  ) => {
     const flashCardUser = window.localStorage.getItem("flashCardUser");
     const { localId = "", email = "" } = flashCardUser
       ? JSON.parse(flashCardUser)
@@ -120,9 +136,9 @@ export default function Quiz({ cards }: QuizProps) {
         const existingScore = response.data?.score["correct"];
         if (
           finalScore > existingScore ||
-          (response.data.score["correct"] === 0 && response.data.score["incorrect"] === 0)
+          (response.data.score["correct"] === 0 &&
+            response.data.score["incorrect"] === 0)
         ) {
-
           await http.post(`/deck/${id}/update-leaderboard`, {
             userId: localId,
             userEmail: email,
@@ -153,50 +169,58 @@ export default function Quiz({ cards }: QuizProps) {
     setScore(0);
     setIsQuizFinished(false);
     setIncorrectAnswers(0);
+    setIncorrectQuestions([]);
     setTimeLeft(quizTime || 0);
   };
 
-if (isQuizFinished) {
-  return (
-    <div className="quiz-summary">
-      <h2>Quiz Complete!</h2>
-      <p>Your Score: {score} / {cards.length}</p>
-      <p>Incorrect Answers: {cards.length - score}</p>
-      <button className="btn btn-primary" onClick={restartQuiz}>
-        Restart Quiz
-      </button>
-      <div className="incorrect-questions">
-        <h3>Questions You Got Wrong:</h3>
-        {incorrectQuestions.length > 0 ? (
-          <ul>
-            {incorrectQuestions.map((question, index) => (
-              <li key={index}>
-                <p><strong>Question:</strong> {question.question}</p>
-                <p><strong>Your Answer:</strong> {question.userAnswer}</p>
-                <p><strong>Correct Answer:</strong> {question.correctAnswer}</p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>Great job! You got all questions correct!</p>
-        )}
+  if (isQuizFinished) {
+    return (
+      <div className='quiz-summary'>
+        <h2>Quiz Complete!</h2>
+        <p>
+          Your Score: {score} / {cards.length}
+        </p>
+        <p>Incorrect Answers: {cards.length - score}</p>
+        <button className='btn btn-primary' onClick={restartQuiz}>
+          Restart Quiz
+        </button>
+        <div className='incorrect-questions'>
+          <h3>Questions You Got Wrong:</h3>
+          {incorrectQuestions.length > 0 ? (
+            <ul>
+              {incorrectQuestions.map((question, index) => (
+                <li key={index}>
+                  <p>
+                    <strong>Question:</strong> {question.question}
+                  </p>
+                  <p>
+                    <strong>Your Answer:</strong> {question.userAnswer}
+                  </p>
+                  <p>
+                    <strong>Correct Answer:</strong> {question.correctAnswer}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>Great job! You got all questions correct!</p>
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
-
+    );
+  }
 
   if (quizTime === null) {
     return (
-      <div className="quiz-time-setup">
+      <div className='quiz-time-setup'>
         <h2>Set Quiz Time</h2>
         <input
-          type="number"
-          placeholder="Enter time in minutes (0 for Timer Not Required)"
-          value={inputTime}
+          type='number'
+          placeholder='Enter time in minutes (0 for No timer)'
+          value={Math.max(0, parseInt(inputTime, 10))}
           onChange={(e) => setInputTime(e.target.value)} // Update `inputTime` only
         />
-        <button onClick={startQuiz} className="btn btn-primary">
+        <button onClick={startQuiz} className='btn btn-primary'>
           Start Quiz
         </button>
       </div>
@@ -230,7 +254,7 @@ if (isQuizFinished) {
       <p>
         Question {currentCardIndex + 1} / {cards.length}
       </p>
-      <p>Time Left: {timeLeft} seconds</p>
+      {timeLeft > 0 && <p>Time Left: {timeLeft} seconds</p>}
     </div>
   );
 }
