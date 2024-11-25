@@ -103,7 +103,9 @@ def addMemberToGroup(id):
             if {"userId": localId, "email": email} not in member_list:
                 member_list.append({"userId": localId, "email": email})
                 db.child("group").child(id).child("members").set(member_list)
-            return jsonify(message='User added successfully', status=200), 200
+                return jsonify(message='User added successfully', status=200), 200
+            else:
+                raise Exception("User is already in this group")
         else:
             raise Exception("Incorrect join key")
     except Exception as e:

@@ -136,7 +136,19 @@ const GroupDashboard = () => {
                 cards_count: deck.cards_count,
                 owner: localId
             })
-            Swal.fire("Deck Added Successfully!", "", "success").then(() => fetchGroup());
+            await http.post(`/group/${id}/messages`, {
+                email: "SYSTEM",
+                message: ` User '${email}' has added deck '${deck.title}' to the group`
+            })
+            Swal.fire("Deck Added Successfully!", "", "success").then(async () => {
+                fetchGroup()
+                await fetchChat()
+                setTimeout(() => {
+                    if(chatRef.current){
+                        chatRef.current.scrollBy({  top:58, behavior: "auto" });
+                    }
+                }, 50)
+            });
         } catch (e) {
             Swal.fire("Error Adding Deck", "", "error")
         } finally {
@@ -146,9 +158,20 @@ const GroupDashboard = () => {
     const removeFromGroup = async(user: User | null) => {
         try {
             const res = await http.patch(`/group/${id}/removeMember`, {
-                userId: user
+                userId: user?.userId
             })
-            Swal.fire("Member removed Successfully!", "", "success").then(() => fetchGroup());
+            await http.post(`/group/${id}/messages`, {
+                email: "SYSTEM",
+                message: ` User '${user?.email}' has been removed from the group`
+            })
+            Swal.fire("Member removed Successfully!", "", "success").then(async () => {
+                fetchGroup()
+                await fetchChat()
+                setTimeout(() => {
+                    if(chatRef.current){
+                        chatRef.current.scrollBy({  top:58, behavior: "auto" });
+                    }
+                }, 50)});
         } catch (e) {
             Swal.fire("Error removing member", "", "error")
         } finally {
@@ -162,7 +185,19 @@ const GroupDashboard = () => {
             const res = await http.patch(`/group/${id}/removeDeck`, {
                 id: deck?.id
             })
-            Swal.fire("Deck removed Successfully!", "", "success").then(() => fetchGroup());
+            await http.post(`/group/${id}/messages`, {
+                email: "SYSTEM",
+                message: ` User '${email}' has removed deck '${deck?.title}' from the group`
+            })
+            Swal.fire("Deck removed Successfully!", "", "success").then(async () => {
+                fetchGroup()
+                await fetchChat()
+                setTimeout(() => {
+                    if(chatRef.current){
+                        chatRef.current.scrollBy({  top:58, behavior: "auto" });
+                    }
+                }, 50)
+            });
         } catch (e) {
             Swal.fire("Error removing deck", "", "error")
         } finally {
@@ -194,9 +229,9 @@ const GroupDashboard = () => {
             setTextMessage("")
             await fetchChat()
             setTimeout(() => {
-            if(chatRef.current){
-                chatRef.current.scrollBy({  top:58, behavior: "auto" });
-            }
+                if(chatRef.current){
+                    chatRef.current.scrollBy({  top:58, behavior: "auto" });
+                }
             }, 50)
             
         }
@@ -400,7 +435,7 @@ const GroupDashboard = () => {
             </Modal>
         
             <Modal open={urlModalOpen} width="60vw" onCancel={() => setURLModalOpen(false)} footer={<button onClick={() => setURLModalOpen(false)}>Close</button>}>
-                <h4>{window.location.href + "/" + group?.join_key}</h4>
+                <h4>{window.location.href.charAt(window.location.href.length - 1) == '/' ? window.location.href + group?.join_key : window.location.href + "/"+ group?.join_key}</h4>
                 <p>Share this link to invite other users to this group.</p>
             </Modal>
 

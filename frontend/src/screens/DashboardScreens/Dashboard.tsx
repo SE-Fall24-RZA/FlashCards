@@ -65,7 +65,7 @@ const Dashboard = () => {
   const [canScrollRightShare, setCanScrollRightShare] = useState(false);
 
   const flashCardUser = window.localStorage.getItem("flashCardUser");
-  const { localId } = (flashCardUser && JSON.parse(flashCardUser)) || {};
+  const { localId, email } = (flashCardUser && JSON.parse(flashCardUser)) || {};
 
   const navigate = useNavigate();
 
@@ -404,6 +404,7 @@ const Dashboard = () => {
   const handleLeaveGroup = async (id: string) => {
     try {
       await http.patch(`/group/${id}/removeMember`, { userId: localId });
+      await http.post(`/group/${id}/messages`, {email: "SYSTEM", message: `User '${email} has left the group`})
       fetchGroups();
       Swal.fire("You have left the group", "", "success");
     } catch (err) {
