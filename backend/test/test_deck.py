@@ -519,6 +519,59 @@ class TestDeck(unittest.TestCase):
 
         response_data = json.loads(response.data)
         assert "An error occurred" in response_data['message']
+
+    @patch('src.deck.routes.db')
+    def test_add_quiz_attempt_success(self, mock_db):
+        '''Test successful addition of a quiz attempt'''
+        quiz_data = {
+            "userId": "user_id",
+            "userEmail": "test@example.com",
+            "correct": 3,
+            "incorrect": 2,
+            "lastAttempt": "2024-11-25 10:00:00"
+        }
+        sanitized_last_attempt = "2024-11-25 10-00-00"  # Expected sanitized version
+
+        response = self.app.post(
+            '/deck/some_deck_id/add-quiz-attempt',
+            data=json.dumps(quiz_data),
+            content_type='application/json'
+        )
+        assert response.status_code == 200
+
+        response_data = json.loads(response.data)
+        assert response_data['message'] == "Quiz attempt added successfully."
+
+        # Verify the correct database path and data were used
+        mock_db.child.return_value.child.return_value.child.return_value.child.return_value.set.assert_called_once_with({
+            "userEmail": quiz_data["userEmail"],
+            "correct": quiz_data["correct"],
+            "incorrect": quiz_data["incorrect"],
+            "lastAttempt": quiz_data["lastAttempt"],
+        })
+
+    @patch('src.deck.routes.db')
+    def test_add_quiz_attempt_error(self, mock_db):
+        '''Test error during quiz attempt addition'''
+        quiz_data = {
+            "userId": "user_id",
+            "userEmail": "test@example.com",
+            "correct": 3,
+            "incorrect": 2,
+            "lastAttempt": "2024-11-25 10:00:00"
+        }
+
+        mock_db.child.return_value.child.return_value.child.return_value.child.return_value.set.side_effect = Exception("Database error")
+
+        response = self.app.post(
+            '/deck/some_deck_id/add-quiz-attempt',
+            data=json.dumps(quiz_data),
+            content_type='application/json'
+        )
+        assert response.status_code == 400
+
+        response_data = json.loads(response.data)
+        assert "An error occurred" in response_data['message']
             
     
 if __name__=="__main__":
