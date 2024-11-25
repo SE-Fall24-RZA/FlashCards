@@ -40,6 +40,12 @@ interface LeaderboardEntry {
     lastAttempt: string | Date;
 }
 
+interface Message {
+    user: string,
+    timestamp: string,
+    message: string
+}
+
 
 const GroupDashboard = () => {
     const [group, setGroup] = useState<Group | null>(null)
@@ -59,16 +65,20 @@ const GroupDashboard = () => {
     const [deckToRemove, setDeckToRemove] = useState<Deck | null>(null)
     const [removeConfirm, setRemoveConfirm] = useState(false)
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+    const [chat, setChat] = useState<Message[]>([])
+    const [textMessage, setTextMessage] = useState<string>("")
     const navigate = useNavigate()
 
     const sliderRefLibrary = useRef<HTMLDivElement>(null);
+    const chatRef = useRef<HTMLDivElement>(null)
     const flashCardUser = window.localStorage.getItem("flashCardUser");
-    const { localId } = (flashCardUser && JSON.parse(flashCardUser)) || {};
+    const { localId, email } = (flashCardUser && JSON.parse(flashCardUser)) || {};
     const { id } = useParams();
 
     useEffect(() => {
         fetchGroup()
         fetchDecks()
+        fetchChat()
     }, [])
 
     useEffect(() => {
@@ -158,6 +168,37 @@ const GroupDashboard = () => {
         } finally {
             setDeckToRemove(null)
             setRemoveDeckModalOpen(false)
+        }
+    }
+    const fetchChat = async () => {
+        try {
+            const res = await http.get(`/group/${id}/messages`);
+            setChat(res.data?.chat);
+            if(chatRef.current) {
+                chatRef.current.scrollTop = chatRef.current.scrollHeight
+            }
+        }
+        catch (error) {
+            console.error("error fetching chat:", error)
+        }
+    }
+    const postMessage = async () => {
+        try {
+            const res = await http.post(`/group/${id}/messages`, {
+                email: email,
+                message: textMessage
+            })
+        } catch (e) {
+            Swal.fire("Error posting message", "", "error")
+        } finally {
+            setTextMessage("")
+            await fetchChat()
+            setTimeout(() => {
+            if(chatRef.current){
+                chatRef.current.scrollBy({  top:58, behavior: "auto" });
+            }
+            }, 50)
+            
         }
     }
     const fetchLeaderboard = async (deckId: string) => {
@@ -273,6 +314,34 @@ const GroupDashboard = () => {
                                         )}
                                     </div>
                                 )}
+                            </div>
+                            <div className="my-3">
+                                <h4>Group Chat:</h4>
+                                <div className="d-flex flex-column-reverse p-1 group-chat">
+                                    <div className="d-flex flex-row">
+                                        <input className="col-11 text-post" value={textMessage} onChange={(e) => {setTextMessage(e.target.value)}}></input>
+                                        <button className="col-1" onClick={() => {postMessage()}}><i className="lni lni-arrow-right"></i></button>
+                                    </div>
+                                    <div className="message-list" ref={chatRef}>
+                                        {chat.map((msg) => {
+                                            return (<div className="group-chat-message">
+                                                <div className="d-flex flex-row mb-0 align-items-end">
+                                                    <p className="me-1 mb-0 fw-bold username">
+                                                        {msg.user}
+                                                    </p>
+                                                    <p className="me-3 mb-0 time">
+                                                        {msg.timestamp}
+                                                    </p>
+                                                </div>
+                                                <p>
+                                                    {msg.message}
+                                                </p>
+                                                
+                                            </div>)
+                                        })}
+                                    </div>
+                                    
+                                </div>
                             </div>
                         </div>
                         <div className="col-md-3">

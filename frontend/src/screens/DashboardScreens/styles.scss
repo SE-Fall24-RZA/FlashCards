@@ -129,7 +129,28 @@
             }
         }
     }
-    min-height: 98vh;   
+    min-height: 98vh;
+    .group-chat{
+        border: solid;
+        border-color: #ccc;
+        border-width: 1px;
+        height: 300px;
+        .message-list {
+            overflow-y: auto;
+        }
+        .group-chat-message {
+            .userName {
+                font-size: medium;
+            }
+            .time {
+                font-size: small;
+                color: #AAA;
+            }
+        }
+        // .text-post {
+        //     width: 100%
+        // }
+    }
 }
 .group-add-card {
     // width: 23vw;
