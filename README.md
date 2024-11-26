@@ -18,8 +18,7 @@
 <a href="https://app.codecov.io/gh/SE-Fall24-RZA/FlashCards" alt="Codecov">
 <img src="https://codecov.io/github/SE-Fall24-RZA/FlashCards/branch/group31-fall24/graph/badge.svg"/> </a>
 
-<a href="" alt="DOI">
-<img src=""/> ZENODO BADGE HERE</a>
+<a href="https://doi.org/10.5281/zenodo.14226613"><img src="https://zenodo.org/badge/884574079.svg" alt="DOI"></a>
 <a href="https://img.shields.io/badge/python-v3.9-yellow.svg" alt="Python version">
 <img src="https://img.shields.io/badge/python-v3.9-yellow.svg"/> </a>
 <a href="https://img.shields.io/github/repo-size/SE-Fall24-RZA/FlashCards?color=brightgreen" alt="Repo size">
