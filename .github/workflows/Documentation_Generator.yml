@@ -1,8 +1,10 @@
 name: Documentation Generator
 
 on:
-    push:
-        branches: ["main"]
+  push:
+    branches:
+      - main
+      - group31-fall24
 
 jobs:
     build:
