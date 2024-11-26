@@ -33,6 +33,12 @@ interface Group {
   join_key: string;
   owner: string;
   decks: Deck[];
+  alert: boolean;
+}
+
+interface User {
+  userId: string;
+  email: string;
 }
 
 const Dashboard = () => {
@@ -65,7 +71,7 @@ const Dashboard = () => {
   const [canScrollRightShare, setCanScrollRightShare] = useState(false);
 
   const flashCardUser = window.localStorage.getItem("flashCardUser");
-  const { localId } = (flashCardUser && JSON.parse(flashCardUser)) || {};
+  const { localId, email } = (flashCardUser && JSON.parse(flashCardUser)) || {};
 
   const navigate = useNavigate();
 
@@ -154,7 +160,17 @@ const Dashboard = () => {
       const res = await http.get("/group/all", {
         params: { localId: localId },
       });
-      setGroups(res.data?.groups || []);
+      const groupList = res.data?.groups || []
+      for(const grp of groupList) {
+        const resNotification = await http.get(`/group/${grp.id}/notifications`)
+        grp.alert = false
+        resNotification.data.notifications.map((usr: any) => {
+          if(usr.userId == localId) {
+            grp.alert = true
+          }
+        })
+      }
+      setGroups(groupList);
     } catch (err) {
       console.error("Error fetching folders:", err);
     }
@@ -401,9 +417,11 @@ const Dashboard = () => {
     }
   };
 
-  const handleLeaveGroup = async (id: string) => {
+  const handleLeaveGroup = async (group: Group) => {
     try {
-      await http.patch(`/group/${id}/removeMember`, { userId: localId });
+      await http.patch(`/group/${group.id}/removeMember`, { userId: localId });
+      await http.post(`/group/${group.id}/messages`, {email: "SYSTEM", message: `User '${email} has left the group`})
+      await http.put(`/group/${group.id}/notifications`, {members: group.members})
       fetchGroups();
       Swal.fire("You have left the group", "", "success");
     } catch (err) {
@@ -724,6 +742,7 @@ const Dashboard = () => {
                         <Link to={`/group/${grp.id}/`}>
                           <h5>{grp.group_name}</h5>
                         </Link>
+                        {grp.alert && (<div className="group-alert fw-bold text-center"><i className='lni lni-alarm'></i></div>)}
                       </div>
                       <p className='description'>{grp.description}</p>
                       <p className='items-count'>
@@ -737,7 +756,7 @@ const Dashboard = () => {
                         </Link>
                         <Popconfirm
                           title={`Are you sure you want to leave group "${grp.group_name}"?`}
-                          onConfirm={() => handleLeaveGroup(grp.id)}
+                          onConfirm={() => handleLeaveGroup(grp)}
                           okText='Yes'
                           cancelText='No'
                         >

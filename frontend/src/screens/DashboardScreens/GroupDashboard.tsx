@@ -40,6 +40,12 @@ interface LeaderboardEntry {
     lastAttempt: string | Date;
 }
 
+interface Message {
+    user: string,
+    timestamp: string,
+    message: string
+}
+
 
 const GroupDashboard = () => {
     const [group, setGroup] = useState<Group | null>(null)
@@ -59,16 +65,20 @@ const GroupDashboard = () => {
     const [deckToRemove, setDeckToRemove] = useState<Deck | null>(null)
     const [removeConfirm, setRemoveConfirm] = useState(false)
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+    const [chat, setChat] = useState<Message[]>([])
+    const [textMessage, setTextMessage] = useState<string>("")
     const navigate = useNavigate()
 
     const sliderRefLibrary = useRef<HTMLDivElement>(null);
+    const chatRef = useRef<HTMLDivElement>(null)
     const flashCardUser = window.localStorage.getItem("flashCardUser");
-    const { localId } = (flashCardUser && JSON.parse(flashCardUser)) || {};
+    const { localId, email } = (flashCardUser && JSON.parse(flashCardUser)) || {};
     const { id } = useParams();
 
     useEffect(() => {
         fetchGroup()
         fetchDecks()
+        fetchChat()
     }, [])
 
     useEffect(() => {
@@ -126,7 +136,22 @@ const GroupDashboard = () => {
                 cards_count: deck.cards_count,
                 owner: localId
             })
-            Swal.fire("Deck Added Successfully!", "", "success").then(() => fetchGroup());
+            await http.post(`/group/${id}/messages`, {
+                email: "SYSTEM",
+                message: ` User '${email}' has added deck '${deck.title}' to the group`
+            })
+            await http.put(`/group/${id}/notifications`, {
+                members: group?.members
+            })
+            Swal.fire("Deck Added Successfully!", "", "success").then(async () => {
+                fetchGroup()
+                await fetchChat()
+                setTimeout(() => {
+                    if(chatRef.current){
+                        chatRef.current.scrollBy({  top:58, behavior: "auto" });
+                    }
+                }, 50)
+            });
         } catch (e) {
             Swal.fire("Error Adding Deck", "", "error")
         } finally {
@@ -136,9 +161,23 @@ const GroupDashboard = () => {
     const removeFromGroup = async(user: User | null) => {
         try {
             const res = await http.patch(`/group/${id}/removeMember`, {
-                userId: user
+                userId: user?.userId
             })
-            Swal.fire("Member removed Successfully!", "", "success").then(() => fetchGroup());
+            await http.post(`/group/${id}/messages`, {
+                email: "SYSTEM",
+                message: ` User '${user?.email}' has been removed from the group`
+            })
+            await http.put(`/group/${id}/notifications`, {
+                members: group?.members
+            })
+            Swal.fire("Member removed Successfully!", "", "success").then(async () => {
+                fetchGroup()
+                await fetchChat()
+                setTimeout(() => {
+                    if(chatRef.current){
+                        chatRef.current.scrollBy({  top:58, behavior: "auto" });
+                    }
+                }, 50)});
         } catch (e) {
             Swal.fire("Error removing member", "", "error")
         } finally {
@@ -152,12 +191,62 @@ const GroupDashboard = () => {
             const res = await http.patch(`/group/${id}/removeDeck`, {
                 id: deck?.id
             })
-            Swal.fire("Deck removed Successfully!", "", "success").then(() => fetchGroup());
+            await http.post(`/group/${id}/messages`, {
+                email: "SYSTEM",
+                message: ` User '${email}' has removed deck '${deck?.title}' from the group`
+            })
+            await http.put(`/group/${id}/notifications`, {
+                members: group?.members
+            })
+            Swal.fire("Deck removed Successfully!", "", "success").then(async () => {
+                fetchGroup()
+                await fetchChat()
+                setTimeout(() => {
+                    if(chatRef.current){
+                        chatRef.current.scrollBy({  top:58, behavior: "auto" });
+                    }
+                }, 50)
+            });
         } catch (e) {
             Swal.fire("Error removing deck", "", "error")
         } finally {
             setDeckToRemove(null)
             setRemoveDeckModalOpen(false)
+        }
+    }
+    const fetchChat = async () => {
+        try {
+            const res = await http.get(`/group/${id}/messages`);
+            setChat(res.data?.chat);
+            if(chatRef.current) {
+                chatRef.current.scrollTop = chatRef.current.scrollHeight
+            }
+            await http.put(`/group/${id}/notifications/clear`, {user: {userId: localId, email: email}})
+        }
+        catch (error) {
+            console.error("error fetching chat:", error)
+        }
+    }
+    const postMessage = async () => {
+        try {
+            const res = await http.post(`/group/${id}/messages`, {
+                email: email,
+                message: textMessage
+            })
+            await http.put(`/group/${id}/notifications`, {
+                members: group?.members
+            })
+        } catch (e) {
+            Swal.fire("Error posting message", "", "error")
+        } finally {
+            setTextMessage("")
+            await fetchChat()
+            setTimeout(() => {
+                if(chatRef.current){
+                    chatRef.current.scrollBy({  top:58, behavior: "auto" });
+                }
+            }, 50)
+            
         }
     }
     const fetchLeaderboard = async (deckId: string) => {
@@ -274,6 +363,36 @@ const GroupDashboard = () => {
                                     </div>
                                 )}
                             </div>
+                            <div className="my-3">
+                                <h4>Group Chat:</h4>
+                                <div className="d-flex flex-column-reverse p-1 group-chat">
+                                    <div className="d-flex flex-row">
+                                        <input className="col-11 text-post" value={textMessage} onChange={(e) => {setTextMessage(e.target.value)}}></input>
+                                        <button className="col-1" onClick={() => {postMessage()}}><i className="lni lni-arrow-right"></i></button>
+                                    </div>
+                                    <div className="message-list" ref={chatRef}>
+                                        {chat.map((msg) => {
+                                            return (<div className="group-chat-message">
+                                                <div className="d-flex flex-row mb-0 align-items-end">
+                                                    <p className="me-1 mb-0 fw-bold username">
+                                                        {msg.user}
+                                                    </p>
+                                                    <p className="me-3 mb-0 time">
+                                                        {msg.timestamp}
+                                                    </p>
+                                                </div>
+                                                <div className="chat-message">
+                                                    <p >
+                                                        {msg.message}
+                                                    </p>
+                                                </div>
+                                                
+                                            </div>)
+                                        })}
+                                    </div>
+                                    
+                                </div>
+                            </div>
                         </div>
                         <div className="col-md-3">
                             <Card>
@@ -331,7 +450,7 @@ const GroupDashboard = () => {
             </Modal>
         
             <Modal open={urlModalOpen} width="60vw" onCancel={() => setURLModalOpen(false)} footer={<button onClick={() => setURLModalOpen(false)}>Close</button>}>
-                <h4>{window.location.href + "/" + group?.join_key}</h4>
+                <h4>{window.location.href.charAt(window.location.href.length - 1) == '/' ? window.location.href + group?.join_key : window.location.href + "/"+ group?.join_key}</h4>
                 <p>Share this link to invite other users to this group.</p>
             </Modal>
 

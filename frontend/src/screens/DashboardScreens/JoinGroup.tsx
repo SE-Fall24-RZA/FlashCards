@@ -6,6 +6,7 @@ import http from "utils/api";
 const JoinGroup = () => {
     const [loading, setLoading] = useState(true)
     const [joinedGroup, setJoinedGroup] = useState(false)
+    const [joining, setJoining] = useState(false)
     const {id, key} = useParams()
     const flashCardUser = window.localStorage.getItem("flashCardUser");
     const { localId, email } = (flashCardUser && JSON.parse(flashCardUser)) || {};
@@ -16,17 +17,29 @@ const JoinGroup = () => {
 
     const joinGroup = async () => {
         try {
-            const response = await http.patch(`/group/${id}/addMember`, {
-                localId: localId,
-                email: email,
-                key: key
-            })
-            if(response.status === 201) {
-                setJoinedGroup(true)
+            if(!joining) {
+                setJoining(true)
+                const groupRes = await http.get(`/group/${id}`)
+                const response = await http.patch(`/group/${id}/addMember`, {
+                    localId: localId,
+                    email: email,
+                    key: key
+                })
+                if(response.status === 200) {
+                    await http.post(`/group/${id}/messages`, {
+                        email: "SYSTEM",
+                        message: `User '${email}' has joined the group.  Welcome!`
+                    })
+                    await http.put(`/group/${id}/notifications`, {
+                        members: groupRes.data.group.members
+                    })
+                    setJoinedGroup(true)
+                }
+                else {
+                    setJoinedGroup(false)
+                }
             }
-            else {
-                setJoinedGroup(false)
-            }
+            
         } finally {
             setLoading(false)
         }
