@@ -2,12 +2,12 @@ from flask import Flask
 import sys
 sys.path.append('backend/src')
 import unittest
-from unittest.mock import patch, MagicMock, ANY
+from unittest.mock import patch, MagicMock, ANY, Mock
 import json
 from src.auth.routes import auth_bp
 from src.deck.routes import deck_bp
 from src.cards.routes import card_bp
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytest
 from pathlib import Path
 from unittest.mock import call
@@ -474,6 +474,255 @@ class TestDeck(unittest.TestCase):
             response3 = self.app.get('deck/share', query_string=dict(localId='Test2'))
             response3_data = json.loads(response3.data)
             assert len(response3_data['shared_decks']) == 0
+
+    @patch('src.deck.routes.db')
+    def test_get_deck_analysis_success(self, mock_db):
+        '''Test successful fetching of deck analysis'''
+        # Mock the database response
+        mock_entry_1 = Mock()
+        mock_entry_1.val.return_value = {"correct": 5, "incorrect": 2}
+        mock_entry_2 = Mock()
+        mock_entry_2.val.return_value = {"correct": 3, "incorrect": 1}
+        mock_db.child.return_value.child.return_value.get.return_value.each.return_value = [mock_entry_1, mock_entry_2]
+
+        response = self.app.get('/deck/some_deck_id/analysis')
+        assert response.status_code == 200
+
+        response_data = json.loads(response.data)
+        assert response_data['message'] == "Analysis data fetched successfully"
+        analysis = response_data['analysis']
+        assert analysis['total_correct'] == 8
+        assert analysis['total_incorrect'] == 3
+        assert analysis['total_attempts'] == 11
+        assert analysis['average_correct'] == 4
+        assert analysis['average_incorrect'] == 1.5
+        assert analysis['average_attempts'] == 5.5
+
+    @patch('src.deck.routes.db')
+    def test_get_deck_analysis_no_data(self, mock_db):
+        '''Test fetching deck analysis with no data'''
+        mock_db.child.return_value.child.return_value.get.return_value.each.return_value = []
+
+        response = self.app.get('/deck/some_deck_id/analysis')
+        assert response.status_code == 404
+
+        response_data = json.loads(response.data)
+        assert response_data['message'] == "No data available for analysis."
+
+    @patch('src.deck.routes.db')
+    def test_get_deck_analysis_error(self, mock_db):
+        '''Test error during deck analysis fetching'''
+        mock_db.child.return_value.child.return_value.get.side_effect = Exception("Database error")
+
+        response = self.app.get('/deck/some_deck_id/analysis')
+        assert response.status_code == 400
+
+        response_data = json.loads(response.data)
+        assert "An error occurred" in response_data['message']
+
+    @patch('src.deck.routes.db')
+    def test_add_quiz_attempt_success(self, mock_db):
+        '''Test successful addition of a quiz attempt'''
+        quiz_data = {
+            "userId": "user_id",
+            "userEmail": "test@example.com",
+            "correct": 3,
+            "incorrect": 2,
+            "lastAttempt": "2024-11-25 10:00:00"
+        }
+        sanitized_last_attempt = "2024-11-25 10-00-00"  # Expected sanitized version
+
+        response = self.app.post(
+            '/deck/some_deck_id/add-quiz-attempt',
+            data=json.dumps(quiz_data),
+            content_type='application/json'
+        )
+        assert response.status_code == 200
+
+        response_data = json.loads(response.data)
+        assert response_data['message'] == "Quiz attempt added successfully."
+
+        # Verify the correct database path and data were used
+        mock_db.child.return_value.child.return_value.child.return_value.child.return_value.set.assert_called_once_with({
+            "userEmail": quiz_data["userEmail"],
+            "correct": quiz_data["correct"],
+            "incorrect": quiz_data["incorrect"],
+            "lastAttempt": quiz_data["lastAttempt"],
+        })
+
+    @patch('src.deck.routes.db')
+    def test_add_quiz_attempt_error(self, mock_db):
+        '''Test error during quiz attempt addition'''
+        quiz_data = {
+            "userId": "user_id",
+            "userEmail": "test@example.com",
+            "correct": 3,
+            "incorrect": 2,
+            "lastAttempt": "2024-11-25 10:00:00"
+        }
+
+        mock_db.child.return_value.child.return_value.child.return_value.child.return_value.set.side_effect = Exception("Database error")
+
+        response = self.app.post(
+            '/deck/some_deck_id/add-quiz-attempt',
+            data=json.dumps(quiz_data),
+            content_type='application/json'
+        )
+        assert response.status_code == 400
+
+        response_data = json.loads(response.data)
+        assert "An error occurred" in response_data['message']
+
+    @patch('src.deck.routes.db')
+    def test_get_user_progress_success(self, mock_db):
+        '''Test fetching user progress successfully.'''
+        # Arrange
+        mock_data = {
+            "2023-11-20T15:30:00Z": {
+                "userEmail": "test@example.com",
+                "correct": 5,
+                "incorrect": 2,
+                "lastAttempt": "2023-11-20T15:30:00Z"
+            },
+            "2023-11-21T16:45:00Z": {
+                "userEmail": "test@example.com",
+                "correct": 7,
+                "incorrect": 1,
+                "lastAttempt": "2023-11-21T16:45:00Z"
+            }
+        }
+        mock_db.child.return_value.child.return_value.child.return_value.get.return_value.val.return_value = mock_data
+
+        # Act
+        response = self.app.get('/deck/test-deck/user-progress/test-user', content_type='application/json')
+
+        # Assert
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data['status'] == 200
+        assert len(response_data['progress']) == 2
+        assert response_data['progress'][0]['correct'] == 5
+        assert response_data['progress'][0]['date'] == "2023-11-20"
+        assert response_data['progress'][1]['correct'] == 7
+        assert response_data['progress'][1]['date'] == "2023-11-21"
+
+    @patch('src.deck.routes.db')
+    def test_get_user_progress_no_data(self, mock_db):
+        '''Test fetching user progress when no data exists.'''
+        # Arrange
+        mock_db.child.return_value.child.return_value.child.return_value.get.return_value.val.return_value = None
+
+        # Act
+        response = self.app.get('/deck/test-deck/user-progress/test-user', content_type='application/json')
+
+        # Assert
+        assert response.status_code == 404
+        response_data = json.loads(response.data)
+        assert response_data['status'] == 404
+        assert response_data['progress'] == []
+        assert response_data['message'] == "No progress data found for the user."
+
+    @patch('src.deck.routes.db')
+    def test_get_user_progress_error(self, mock_db):
+        '''Test fetching user progress with an internal error.'''
+        # Arrange
+        mock_db.child.return_value.child.return_value.child.return_value.get.side_effect = Exception("Database error")
+
+        # Act
+        response = self.app.get('/deck/test-deck/user-progress/test-user', content_type='application/json')
+
+        # Assert
+        assert response.status_code == 400
+        response_data = json.loads(response.data)
+        assert response_data['status'] == 400
+        assert "An error occurred" in response_data['message']
+
+    @patch('src.deck.routes.db')
+    def test_log_practice_initialize_streak(self, mock_db):
+        '''Test logging practice when no streak data exists (initialize streak).'''
+        # Arrange
+        mock_db.child.return_value.child.return_value.get.return_value.val.return_value = None  # No existing streak data
+
+        # Act
+        response = self.app.post('/deck/practice', data=json.dumps({
+            "userId": "test-user",
+            "deckId": "test-deck"
+        }), content_type='application/json')
+
+        # Assert
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data['message'] == 'Practice logged and streak updated'
+        mock_db.child().child().update.assert_called_once_with({
+            "currentStreak": 1,
+            "lastPracticeDate": datetime.utcnow().date().isoformat()
+        })
+
+    @patch('src.deck.routes.db')
+    def test_log_practice_increment_streak(self, mock_db):
+        '''Test logging practice on a consecutive day (increment streak).'''
+        # Arrange
+        yesterday = (datetime.utcnow().date() - timedelta(days=1)).isoformat()
+        mock_db.child.return_value.child.return_value.get.return_value.val.return_value = {
+            "currentStreak": 3,
+            "lastPracticeDate": yesterday
+        }
+
+        # Act
+        response = self.app.post('/deck/practice', data=json.dumps({
+            "userId": "test-user",
+            "deckId": "test-deck"
+        }), content_type='application/json')
+
+        # Assert
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data['message'] == 'Practice logged and streak updated'
+        mock_db.child().child().update.assert_called_once_with({
+            "currentStreak": 4,
+            "lastPracticeDate": datetime.utcnow().date().isoformat()
+        })
+
+    @patch('src.deck.routes.db')
+    def test_log_practice_reset_streak(self, mock_db):
+        '''Test logging practice after a gap of more than one day (reset streak).'''
+        two_days_ago = (datetime.utcnow().date() - timedelta(days=2)).isoformat()
+        mock_db.child.return_value.child.return_value.get.return_value.val.return_value = {
+            "currentStreak": 5,
+            "lastPracticeDate": two_days_ago
+        }
+
+        # Act
+        response = self.app.post('/deck/practice', data=json.dumps({
+            "userId": "test-user",
+            "deckId": "test-deck"
+        }), content_type='application/json')
+
+        # Assert
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data['message'] == 'Practice logged and streak updated'
+        mock_db.child().child().update.assert_called_once_with({
+            "currentStreak": 1,
+            "lastPracticeDate": datetime.utcnow().date().isoformat()
+        })
+
+    @patch('src.deck.routes.db')
+    def test_log_practice_error(self, mock_db):
+        '''Test logging practice when an error occurs.'''
+        # Arrange
+        mock_db.child.return_value.child.return_value.get.side_effect = Exception("Database error")
+
+        # Act
+        response = self.app.post('/deck/practice', data=json.dumps({
+            "userId": "test-user",
+            "deckId": "test-deck"
+        }), content_type='application/json')
+
+        # Assert
+        assert response.status_code == 400
+        response_data = json.loads(response.data)
+        assert 'Failed to log practice' in response_data['message']
             
     
 if __name__=="__main__":
