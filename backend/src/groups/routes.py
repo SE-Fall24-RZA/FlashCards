@@ -103,7 +103,9 @@ def addMemberToGroup(id):
             if {"userId": localId, "email": email} not in member_list:
                 member_list.append({"userId": localId, "email": email})
                 db.child("group").child(id).child("members").set(member_list)
-            return jsonify(message='User added successfully', status=200), 200
+                return jsonify(message='User added successfully', status=200), 200
+            else:
+                raise Exception("User is already in this group")
         else:
             raise Exception("Incorrect join key")
     except Exception as e:
@@ -219,3 +221,80 @@ def removeDeckFromGroup(id):
             raise Exception("Deck not assigned to this group")
     except Exception as e:
         return jsonify(message=f'Deck remove failed {e}', status=400), 400
+    
+@group_bp.route('/group/<id>/messages', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def messageGroup(id):
+    '''Posts a new message to the given group's chat thread'''
+    try:
+        data = request.get_json()
+        time = datetime.now()
+        msg = {
+            'user': data['email'],
+            'timestamp': time.strftime("%x") + " " + time.strftime("%X"),
+            'message': data['message']
+        }
+        message_thread = db.child("messages").child(id).get().val()
+        if message_thread != None:
+            message_thread.append(msg)
+            db.child("messages").child(id).set(message_thread)
+        else:
+            db.child("messages").child(id).set([msg])
+        return jsonify(message='Message posted successfully', status=200), 200
+    except Exception as e:
+        return jsonify(message=f'Message posting failed {e}', status=400), 400
+    
+@group_bp.route('/group/<id>/messages', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def getGroupMessages(id):
+    '''Retrieves all messages from the given group's chat thread'''
+    try:
+        message_thread = db.child("messages").child(id).get().val()
+        if message_thread != None:
+            return jsonify(chat=message_thread, message='Message returned successfully', status=200), 200
+        else:
+            return jsonify(chat=[], message='No messages found', status=200), 200
+    except Exception as e:
+        return jsonify(message=f'Message retrieval failed {e}', status=400), 400
+    
+@group_bp.route('/group/<id>/notifications', methods=['PUT'])
+@cross_origin(supports_credentials=True)
+def setGroupNotifications(id):
+    '''Sets notifications for all members of a group'''
+    try:
+        data = request.get_json()
+        members = data['members']
+        db.child("notifications").child(id).set(members)
+        return jsonify(message='Notifications updated succesfully', status=200), 200
+    except Exception as e:
+        return jsonify(message=f'Notifications update failed {e}', status=400), 400
+    
+@group_bp.route('/group/<id>/notifications', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def getGroupNotifications(id):
+    '''Retrieves all notifications for a given group'''
+    try:
+        notifications = db.child("notifications").child(id).get().val()
+        if notifications != None:
+            return jsonify(notifications=notifications, message='Notifications returned successfully', status=200), 200
+        else:
+            return jsonify(notifications=[], message='No notifications found', status=200), 200
+    except Exception as e:
+        return jsonify(message=f'Notification retrieval failed {e}', status=400), 400
+    
+@group_bp.route('/group/<id>/notifications/clear', methods=['PUT'])
+@cross_origin(supports_credentials=True)
+def clearGroupNotification(id):
+    '''Retrieves all notifications for a given group'''
+    try:
+        data = request.get_json()
+        user = data['user']
+        notifications = db.child("notifications").child(id).get().val()
+        if notifications != None and user in notifications:
+            notifications.remove(user)
+            db.child("notifications").child(id).set(notifications)
+            return jsonify(message='Notifications updated successfully', status=200), 200
+        else:
+            return jsonify(message='No notifications to change', status=200), 200
+    except Exception as e:
+        return jsonify(message=f'Notification update failed {e}', status=400), 400
