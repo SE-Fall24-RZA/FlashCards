@@ -73,7 +73,6 @@ const Dashboard = () => {
     fetchDecks();
     fetchFolders();
     fetchGroups();
-    fetchStreak();
     fetchSharedDecks();
   }, []);
 
@@ -179,17 +178,6 @@ const Dashboard = () => {
     fetchDecks(); // Refetch the decks to update both 'decks' and 'recentDecks'
   };
 
-  const fetchStreak = async () => {
-    try {
-      const res = await http.get(`/user/streak`, {
-        params: { userId: localId },
-      });
-      setStreak(res.data);
-    } catch (err) {
-      console.error("Error fetching streak data:", err);
-    }
-  };
-
   const logPractice = async (deckId: string) => {
     try {
       await http.post(`/deck/practice`, {
@@ -197,7 +185,6 @@ const Dashboard = () => {
         deckId,
         date: new Date().toISOString(),
       });
-      fetchStreak(); // Refresh the streak
     } catch (err) {
       console.error("Error logging practice:", err);
     }
@@ -784,7 +771,10 @@ const Dashboard = () => {
                   {/* Button to navigate to deck */}
                   <button
                     className='btn text-left folder-deck-button'
-                    onClick={() => navigateToDeck(id, title)}
+                    onClick={async () => {
+                      await updateLastOpened(id);
+                      navigateToDeck(id, title);
+                    }}
                     style={{
                       flexGrow: 1,
                       textAlign: "left",

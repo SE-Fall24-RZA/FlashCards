@@ -158,6 +158,10 @@ export default function Quiz({ cards }: QuizProps) {
           incorrect: finalIncorrectAnswers, // Pass the final incorrect answers
           lastAttempt: attemptId, // You can use the attempt ID or timestamp here
         });
+
+        await http.post(`/deck/${id}/add-practice-session`, {
+          userId: localId,
+        });
       } catch (error) {
         console.error("Error updating leaderboard:", error);
       }
