@@ -47,10 +47,10 @@ FlashCards is a spaced repetition learning platform to <b>create</b>, <b>memoriz
 8. View Study Analytics
 
 ## Watch Flashcards in Action
-[FlashCards Overview](./images/Group310Fall24-Project3.mp4)
+[FlashCards Overview](https://drive.google.com/file/d/1mFY5DOfuVO1jmhVAEZE4b0QzvzMcxHCp/view?usp=sharing)
 
 ## What's New?
-Watch a video of our new additions for Project 3 - Fall 2024: [New Additions Proj3-Fall2024](./images/Group31-Project3-New%20Additions%20Overview.mp4)
+Watch a video of our new additions for Project 3 - Fall 2024: [New Additions Proj3-Fall2024](https://drive.google.com/file/d/1PNmDwmeX9u7K4ZSDckcyK08o2eQCIOAL/view?usp=sharing)
 
 ## Tech Stack
 <a href="https://flask.palletsprojects.com/en/2.2.x/"><img src="https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white" /></a>
