@@ -30,6 +30,8 @@
 <img src="https://img.shields.io/github/release/SE-Fall24-RZA/FlashCards?color=brightblue"/> </a>
 </p>
 
+Tests Passing: [![Passing Tests](https://github.com/SE-Fall24-RZA/FlashCards/actions/workflows/Coverage.yml/badge.svg)](https://github.com/SE-Fall24-RZA/FlashCards/actions/workflows/Coverage.yml)
+
 ## Description
 Are you a student and having trouble preparing for tests and exams? Look no further. FlashCards also helps you memorize all that hard-to-remember information with online flashcards so that you ace your exams!
 
