@@ -12,7 +12,7 @@
   <a href="https://github.com/SE-Fall24-RZA/FlashCards/graphs/contributors" alt="Contributors">
 <img src="https://img.shields.io/github/contributors/SE-Fall24-RZA/FlashCards?style=plastic"/> </a>
 
-<a href="https://github.com/SE-Fall24-RZA/FlashCards/actions/workflows/Application.yml" alt="Python application">
+<a href="https://github.com/SE-Fall24-RZA/FlashCards/actions/workflows/Application.yml" alt="Flake8 Linting">
 <img src="https://github.com/SE-Fall24-RZA/FlashCards/actions/workflows/Application.yml/badge.svg?style=plastic?branch=group31-fall24"/> </a>
 
 <a href="https://app.codecov.io/gh/SE-Fall24-RZA/FlashCards" alt="Codecov">
@@ -25,7 +25,6 @@
 <a href="https://img.shields.io/github/repo-size/SE-Fall24-RZA/FlashCards?color=brightgreen" alt="Repo size">
 <img src="https://img.shields.io/github/repo-size/SE-Fall24-RZA/FlashCards?color=brightgreen"/> </a>
 <img src="https://img.shields.io/github/languages/top/SE-Fall24-RZA/Flashcards?style=plastic">
-<img src="https://img.shields.io/tokei/lines/github/SE-Fall24-RZA/flashcards?style=plastic">
 <a href="https://github.com/SE-Fall24-RZA/FlashCards/issues">
   <img src="https://img.shields.io/github/issues-raw/SE-Fall24-RZA/flashcards?style=plastic"></a>
 <a href="https://img.shields.io/github/release/SE-Fall24-RZA/FlashCards?color=brightblue" alt="Release">
