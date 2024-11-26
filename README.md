@@ -18,8 +18,7 @@
 <a href="https://app.codecov.io/gh/SE-Fall24-RZA/FlashCards" alt="Codecov">
 <img src="https://codecov.io/github/SE-Fall24-RZA/FlashCards/branch/group31-fall24/graph/badge.svg"/> </a>
 
-<a href="" alt="DOI">
-<img src=""/> ZENODO BADGE HERE</a>
+<a href="https://doi.org/10.5281/zenodo.14226613"><img src="https://zenodo.org/badge/884574079.svg" alt="DOI"></a>
 <a href="https://img.shields.io/badge/python-v3.9-yellow.svg" alt="Python version">
 <img src="https://img.shields.io/badge/python-v3.9-yellow.svg"/> </a>
 <a href="https://img.shields.io/github/repo-size/SE-Fall24-RZA/FlashCards?color=brightgreen" alt="Repo size">
@@ -30,6 +29,8 @@
 <a href="https://img.shields.io/github/release/SE-Fall24-RZA/FlashCards?color=brightblue" alt="Release">
 <img src="https://img.shields.io/github/release/SE-Fall24-RZA/FlashCards?color=brightblue"/> </a>
 </p>
+
+Tests Passing: [![Passing Tests](https://github.com/SE-Fall24-RZA/FlashCards/actions/workflows/Coverage.yml/badge.svg)](https://github.com/SE-Fall24-RZA/FlashCards/actions/workflows/Coverage.yml)
 
 ## Description
 Are you a student and having trouble preparing for tests and exams? Look no further. FlashCards also helps you memorize all that hard-to-remember information with online flashcards so that you ace your exams!
@@ -46,7 +47,10 @@ FlashCards is a spaced repetition learning platform to <b>create</b>, <b>memoriz
 8. View Study Analytics
 
 ## Watch Flashcards in Action
-[Watch FlashCards Video](./images/FlashCards-2.mp4)
+[FlashCards Overview](./images/Group310Fall24-Project3.mp4)
+
+## What's New?
+Watch a video of our new additions for Project 3 - Fall 2024: [New Additions Proj3-Fall2024](./images/Group31-Project3-New%20Additions%20Overview.mp4)
 
 ## Tech Stack
 <a href="https://flask.palletsprojects.com/en/2.2.x/"><img src="https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white" /></a>
