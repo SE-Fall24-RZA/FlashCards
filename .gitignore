@@ -21,3 +21,6 @@
 
 # sensitive information
 /backend/src/__init__.py
+
+__pycache__/
+*.pyc

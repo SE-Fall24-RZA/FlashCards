@@ -723,7 +723,7 @@ class TestDeck(unittest.TestCase):
         assert response.status_code == 400
         response_data = json.loads(response.data)
         assert 'Failed to log practice' in response_data['message']
-            
+        
     
 if __name__=="__main__":
     unittest.main()

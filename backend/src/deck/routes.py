@@ -446,7 +446,6 @@ def get_deck_performance_trends(deckId):
             "status": 400
         }), 400
     
-    
 @deck_bp.route('/deck/practice', methods=['POST'])
 @cross_origin(supports_credentials=True)
 def log_practice():
@@ -491,6 +490,81 @@ def log_practice():
 
     except Exception as e:
         return jsonify(message=f'Failed to log practice: {e}', status=400), 400
+
+@deck_bp.route('/deck/<userId>/add-practice-session', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def add_practice_session(userId):
+    '''This endpoint logs a practice session and updates the user's streak.'''
+    try:
+        data = request.get_json()
+        user_id = data.get("userId")
+        current_date = datetime.utcnow().date()  # Use only date part, ignoring time
+
+        # Retrieve the current streak data for the user
+        user_streak = db.child("streaks").child(userId).get().val()
+        if not user_streak:
+            # If no streak data exists, initialize it
+            user_streak = {
+                "currentStreak": 0,
+                "lastPracticeDate": None
+            }
+
+        # Get the last practice date
+        last_practice_date = user_streak.get("lastPracticeDate")
+        if last_practice_date:
+            last_practice_date = datetime.strptime(last_practice_date, "%Y-%m-%d").date()
+
+            if (current_date - last_practice_date).days == 1:
+                # Consecutive day, increment the streak
+                user_streak["currentStreak"] += 1
+            elif (current_date - last_practice_date).days > 1:
+                # Non-consecutive, reset the streak
+                user_streak["currentStreak"] = 1
+        else:
+            # No previous practice, start the streak
+            user_streak["currentStreak"] = 1
+
+        # Update the last practice date to today
+        user_streak["lastPracticeDate"] = current_date.isoformat()
+
+        # Save the updated streak data back to the database
+        db.child("streaks").child(user_id).update(user_streak)
+
+        return jsonify({
+            "message": "Practice session logged and streak updated.",
+            "status": 200
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "message": f"An error occurred: {e}",
+            "status": 400
+        }), 400
+
+@deck_bp.route('/deck/<userId>/get-streak', methods=['GET'])
+def get_streak(userId):
+    """Fetch the streak for a specific user"""
+    try:
+        # Retrieve the streak data for the user from the database
+        user_streak = db.child("streaks").child(userId).get().val()
+
+        if user_streak:
+            return jsonify({
+                "status": 200,
+                "streak": user_streak
+            })
+        else:
+            return jsonify({
+                "status": 404,
+                "message": "Streak data not found for this user."
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            "message": f"An error occurred: {e}",
+            "status": 400
+        }), 400
+
 
 # @deck_bp.route('/deck/<id>/last-opened', methods=['PATCH'])
 # @cross_origin(supports_credentials=True)
