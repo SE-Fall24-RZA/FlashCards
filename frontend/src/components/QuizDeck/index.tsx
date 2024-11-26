@@ -113,8 +113,8 @@ export default function Quiz({ cards }: QuizProps) {
   const endQuiz = () => {
     // Count unanswered questions as incorrect if the timer ran out
     const unansweredQuestions = cards.length - (currentCardIndex + 1);
-    const finalIncorrectAnswers = incorrectAnswers + unansweredQuestions;
-    setIncorrectAnswers(finalIncorrectAnswers);
+    // const finalIncorrectAnswers = incorrectAnswers + unansweredQuestions;
+    setIncorrectAnswers(cards.length - score);
     setIsQuizFinished(true);
     updateLeaderboard(score, cards.length - score);
     console.log(score);
